@@ -17,7 +17,7 @@ import (
 var testDB *sql.DB
 
 func TestMain(m *testing.M) {
-	dsn := "postgres://postgres:postgres@localhost/2025_2_Avrora?sslmode=disable"
+	dsn := "postgres://postgres:postgres@localhost/2025_2_Avrora_test?sslmode=disable"
 	db.InitDB(dsn)
 	testDB = db.DB
 

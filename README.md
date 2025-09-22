@@ -24,3 +24,10 @@ dbname="2025_2_Avrora"
 psql -u postgres -h localhost
 create database "2025_2_Avrora"
 ```
+
+### Тестовая бд
+
+```bash
+psql -u postgres -h localhost
+create database "2025_2_Avrora_test"
+```
