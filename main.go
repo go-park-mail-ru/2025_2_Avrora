@@ -1,24 +1,37 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/go-park-mail-ru/2025_2_Avrora/db"
 	"github.com/go-park-mail-ru/2025_2_Avrora/handlers"
+	"github.com/go-park-mail-ru/2025_2_Avrora/utils"
 )
 
 func main() {
-	db.InitDB("postgres://postgres:postgres@localhost/2025_2_Avrora?sslmode=disable")
+	utils.LoadEnv()
+	port := os.Getenv("PORT")
+	dbUser := os.Getenv("DB_USER")
+	repo := db.NewRepo()
+	if err := repo.Init(fmt.Sprintf("postgres://%s@%s:%s/%s?sslmode=disable", dbUser, os.Getenv("DB_HOST"), os.Getenv("DB_PORT"), os.Getenv("DB_NAME"))); err != nil {
+		log.Fatal("ошибка инициализации бд:", err)
+	}
+	utils.InitJWTKey()
 
 	// Auth
-	http.HandleFunc("/api/v1/register", handlers.RegisterHandler)
-	http.HandleFunc("/api/v1/login", handlers.LoginHandler)
-	http.HandleFunc("/api/v1/logout", handlers.LogoutHandler)
+	http.HandleFunc("/api/v1/register", func(w http.ResponseWriter, r *http.Request) {
+		handlers.RegisterHandler(w, r, repo)
+	})
+	http.HandleFunc("/api/v1/login", func(w http.ResponseWriter, r *http.Request) {
+		handlers.LoginHandler(w, r, repo)
+	})
+	http.HandleFunc("/api/v1/offers", func(w http.ResponseWriter, r *http.Request) {
+		handlers.GetOffersHandler(w, r, repo)
+	})
 
-	// Offers
-	http.HandleFunc("/api/v1/offers", handlers.GetOffersHandler)
-
-	log.Println("Server starting on :8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Printf("Starting server on port %s with DB user %s", port, dbUser)
+	log.Fatal(http.ListenAndServe(":"+port, nil))
 }

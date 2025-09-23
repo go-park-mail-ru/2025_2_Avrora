@@ -8,12 +8,12 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"time"
+	"unicode"
 
 	"github.com/go-park-mail-ru/2025_2_Avrora/db"
 	"github.com/go-park-mail-ru/2025_2_Avrora/models"
+	"github.com/go-park-mail-ru/2025_2_Avrora/response"
 	"github.com/go-park-mail-ru/2025_2_Avrora/utils"
-	"github.com/golang-jwt/jwt/v5"
 )
 
 type RegisterRequest struct {
@@ -27,169 +27,182 @@ type LoginRequest struct {
 }
 
 type AuthResponse struct {
-	Token string      `json:"token"`
-	User map[string]string `json:"user"`
+	Token string       `json:"token"`
+	User  *models.User `json:"user"`
 }
 
-func writeJSON(w http.ResponseWriter, status int, v interface{}) {
+func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	if err := json.NewEncoder(w).Encode(v); err != nil {
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		http.Error(w, "не получилось разобрать json", http.StatusInternalServerError)
 	}
 }
 
 func validateEmail(email string) bool {
-	re := regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
+	re := regexp.MustCompile(`^[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.[\p{L}]{2,}$`)
 	return re.MatchString(email)
+}
+
+func validatePassword(password string) bool {
+	if len(password) < 6 {
+		return false
+	}
+
+	var hasUpper, hasLower, hasDigit bool
+
+	for _, char := range password {
+		switch {
+		case unicode.IsUpper(char):
+			hasUpper = true
+		case unicode.IsLower(char):
+			hasLower = true
+		case unicode.IsDigit(char):
+			hasDigit = true
+		}
+	}
+
+	return hasUpper && hasLower && hasDigit
 }
 
 func validateRegisterRequest(req *RegisterRequest) error {
 	if strings.TrimSpace(req.Email) == "" {
-		return errors.New("email is required")
+		return errors.New("email не может быть пустым")
 	}
 	if !validateEmail(req.Email) {
-		return errors.New("invalid email format")
+		return errors.New("невалидный формат email")
 	}
 	if len(req.Password) < 6 {
-		return errors.New("password must be at least 6 characters")
+		return errors.New("пароль должен быть не менее 6 символов")
 	}
 	return nil
 }
 
 func validateLoginRequest(req *LoginRequest) error {
 	if strings.TrimSpace(req.Email) == "" {
-		return errors.New("email is required")
+		return errors.New("email не может быть пустым")
 	}
 	if !validateEmail(req.Email) {
-		return errors.New("invalid email format")
+		return errors.New("невалидный формат email")
 	}
-	if strings.TrimSpace(req.Password) == "" {
-		return errors.New("password is required")
+	if !validatePassword(req.Password) {
+		return errors.New("невалидные учетные данные")
 	}
+
 	return nil
 }
 
-func RegisterHandler(w http.ResponseWriter, r *http.Request) {
+func RegisterHandler(w http.ResponseWriter, r *http.Request, repo *db.Repo) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		http.Error(w, "метод не поддерживается", http.StatusMethodNotAllowed)
 		return
 	}
 
 	var req RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
+		writeJSON(w, http.StatusBadRequest, response.NewErrorResp("невалидный json"))
 		return
 	}
 
 	if err := validateRegisterRequest(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		writeJSON(w, http.StatusBadRequest, response.NewErrorResp(err.Error()))
 		return
 	}
 
-	var count int
-	err := db.DB.QueryRow("SELECT COUNT(*) FROM users WHERE email = $1", req.Email).Scan(&count)
+	user, err := repo.User().FindByEmail(req.Email)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "Database error"})
+		writeJSON(w, http.StatusInternalServerError, response.NewErrorResp("ошибка бд"))
 		return
 	}
-	if count > 0 {
-		writeJSON(w, http.StatusConflict, map[string]string{"error": "User already exists"})
+	if user != nil {
+		writeJSON(w, http.StatusConflict, response.NewErrorResp("Пользователь с таким email уже существует"))
 		return
 	}
 
 	hashedPassword, err := utils.HashPassword(req.Password)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "Failed to hash password"})
+		writeJSON(w, http.StatusInternalServerError, response.NewErrorResp("ошибка хеширования пароля"))
 		return
 	}
 
 	var userID int
-	err = db.DB.QueryRow(`
-		INSERT INTO users (email, password) 
-		VALUES ($1, $2) 
-		RETURNING id`, req.Email, hashedPassword).Scan(&userID)
+	err = repo.User().Create(&models.User{
+		Email:    req.Email,
+		Password: hashedPassword,
+	})
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "Failed to create user"})
+		writeJSON(w, http.StatusInternalServerError, response.NewErrorResp("ошибка бд"))
 		return
 	}
 
 	token, err := utils.GenerateJWT(strconv.Itoa(userID))
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "Failed to generate token"})
+		writeJSON(w, http.StatusInternalServerError, response.NewErrorResp("ошибка генерации jwt"))
 		return
 	}
 
 	writeJSON(w, http.StatusCreated, AuthResponse{
 		Token: token,
-        User: map[string]string{
-            "email": req.Email,
-        },
+		User: &models.User{
+			Email: req.Email,
+		},
 	})
 }
-func LoginHandler(w http.ResponseWriter, r *http.Request) {
+func LoginHandler(w http.ResponseWriter, r *http.Request, repo *db.Repo) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		http.Error(w, response.NewErrorResp("метод не поддерживается").Error, http.StatusMethodNotAllowed)
 		return
 	}
 
 	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
+		writeJSON(w, http.StatusBadRequest, response.NewErrorResp("невалидный json"))
 		return
 	}
 
 	if err := validateLoginRequest(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		writeJSON(w, http.StatusBadRequest, response.NewErrorResp(err.Error()))
 		return
 	}
 
-	var user models.User
-	err := db.DB.QueryRow("SELECT id, email, password FROM users WHERE email = $1", req.Email).Scan(&user.ID, &user.Email, &user.Password)
+	user, err := repo.User().FindByEmail(req.Email)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "Invalid credentials"})
+			writeJSON(w, http.StatusUnauthorized, response.NewErrorResp("невалидные учетные данные"))
 			return
 		}
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "Database error"})
+		writeJSON(w, http.StatusInternalServerError, response.NewErrorResp("ошибка бд"))
 		return
 	}
 
 	if !utils.CheckPasswordHash(req.Password, user.Password) {
-		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "Invalid credentials"})
+		writeJSON(w, http.StatusUnauthorized, response.NewErrorResp("невалидные учетные данные"))
 		return
 	}
 
 	token, err := utils.GenerateJWT(strconv.Itoa(user.ID))
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "Failed to generate token"})
+		writeJSON(w, http.StatusInternalServerError, response.NewErrorResp("ошибка генерации jwt"))
 		return
 	}
 
 	writeJSON(w, http.StatusOK, AuthResponse{
 		Token: token,
-		User:  map[string]string{"email": user.Email},
+		User: &models.User{
+			Email: req.Email,
+		},
 	})
 }
 
 func LogoutHandler(w http.ResponseWriter, r *http.Request) {
-	expiredToken, err := generateExpiredJWT()
+	expiredToken, err := utils.GenerateExpiredJWT()
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "Failed to generate expired token"})
+		writeJSON(w, http.StatusInternalServerError, response.NewErrorResp("ошибка генерации jwt"))
 		return
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{
-		"message":      "Logged out successfully",
-		"Token": expiredToken,
+		"message": "успещный логаут",
+		"Token":   expiredToken,
 	})
-}
-
-func generateExpiredJWT() (string, error) {
-	claims := jwt.MapClaims{
-		"exp": time.Now().Add(-1 * time.Second).Unix(),
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(utils.GetJWTSecret())
 }

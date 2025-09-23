@@ -1,15 +1,31 @@
 package utils
 
 import (
-    "golang.org/x/crypto/bcrypt"
+	"os"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 func HashPassword(password string) (string, error) {
-    bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
-    return string(bytes), err
+    LoadEnv()
+
+    pepper := os.Getenv("PASSWORD_PEPPER")
+    if pepper == "" {
+		return "", bcrypt.ErrHashTooShort
+	}
+
+    data := []byte(pepper + password)
+	hash, err := bcrypt.GenerateFromPassword(data, bcrypt.DefaultCost)
+	return string(hash), err
 }
 
 func CheckPasswordHash(password, hash string) bool {
-    err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
-    return err == nil
+	pepper := os.Getenv("PASSWORD_PEPPER")
+	if pepper == "" {
+		return false
+	}
+
+	data := []byte(pepper + password)
+	err := bcrypt.CompareHashAndPassword([]byte(hash), data)
+	return err == nil
 }

@@ -7,6 +7,8 @@
 
 Степан @StephenMarkman
 Руслан @Pasatechnik
+Владислав П @vlpanichkin
+Владислав Л @Vladislav_L_F
 
 ### Тесты
 
