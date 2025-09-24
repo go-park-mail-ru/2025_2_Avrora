@@ -16,36 +16,29 @@ import (
 	"github.com/go-park-mail-ru/2025_2_Avrora/utils"
 )
 
-var testRepo *db.Repo
-
-func TestMain(m *testing.M) {
+func TestRegisterHandler_Success(t *testing.T) {
+	jwtGen := utils.NewJwtGenerator("test_secret_32_chars_min_for_tests")
 	utils.LoadEnv()
+	passwordHasher, _ := utils.NewPasswordHasher(os.Getenv("PASSWORD_PEPPER"))
 	dsn := fmt.Sprintf(
 		"postgres://%s:%s@%s/%s?sslmode=disable",
 		os.Getenv("DB_USER"),
 		os.Getenv("DB_PASSWORD"),
 		os.Getenv("DB_HOST"),
-		os.Getenv("DB_NAME"),
+		os.Getenv("DB_NAME_TEST"),
 	)
-	testRepo = db.NewRepo()
-	if err := testRepo.Init(dsn); err != nil {
-		panic("Failed to initialize test DB: " + err.Error())
+	testRepo, err := db.New(dsn)
+	if err != nil {
+		t.Fatal(err.Error())
 	}
+	testRepo.ClearAllTables()
 
-	testRepo.User().ClearUserTable()
-
-	code := m.Run()
-
-	os.Exit(code)
-}
-
-func TestRegisterHandler_Success(t *testing.T) {
 	body := `{"email": "test@example.com", "password": "secret123"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/register", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 
-	RegisterHandler(w, req, testRepo)
+	RegisterHandler(w, req, testRepo, jwtGen, passwordHasher)
 
 	if w.Code != http.StatusCreated {
 		t.Errorf("Expected status %d, got %d", http.StatusCreated, w.Code)
@@ -65,18 +58,30 @@ func TestRegisterHandler_Success(t *testing.T) {
 }
 
 func TestRegisterHandler_DuplicateEmail(t *testing.T) {
+	jwtGen := utils.NewJwtGenerator("test_secret_32_chars_min_for_tests")
+	passwordHasher, _ := utils.NewPasswordHasher(os.Getenv("PASSWORD_PEPPER"))
+	utils.LoadEnv()
+	dsn := fmt.Sprintf(
+		"postgres://%s:%s@%s/%s?sslmode=disable",
+		os.Getenv("DB_USER"),
+		os.Getenv("DB_PASSWORD"),
+		os.Getenv("DB_HOST"),
+		os.Getenv("DB_NAME_TEST"),
+	)
+	testRepo, _ := db.New(dsn)
+	testRepo.ClearAllTables()
 	// Регистрируем первый раз
 	body := `{"email": "duplicate@example.com", "password": "secret123!В"}`
 	req1 := httptest.NewRequest(http.MethodPost, "/api/v1/register", bytes.NewBufferString(body))
 	req1.Header.Set("Content-Type", "application/json")
 	w1 := httptest.NewRecorder()
-	RegisterHandler(w1, req1, testRepo)
+	RegisterHandler(w1, req1, testRepo, jwtGen, passwordHasher)
 
 	// Повторная регистрация
 	req2 := httptest.NewRequest(http.MethodPost, "/api/v1/register", bytes.NewBufferString(body))
 	req2.Header.Set("Content-Type", "application/json")
 	w2 := httptest.NewRecorder()
-	RegisterHandler(w2, req2, testRepo)
+	RegisterHandler(w2, req2, testRepo, jwtGen, passwordHasher)
 
 	if w2.Code != http.StatusConflict {
 		t.Errorf("Expected status %d, got %d", http.StatusConflict, w2.Code)
@@ -92,8 +97,14 @@ func TestRegisterHandler_DuplicateEmail(t *testing.T) {
 }
 
 func TestLoginHandler_Success(t *testing.T) {
+	jwtGen := utils.NewJwtGenerator("test_secret_32_chars_min_for_tests")
+	utils.LoadEnv()
+	dsn := utils.GetTestPostgresDSN()
+	passwordHasher, _ := utils.NewPasswordHasher(os.Getenv("PASSWORD_PEPPER"))
+	testRepo, _ := db.New(dsn)
+	testRepo.ClearAllTables()
 	// Сначала регистрируем пользователя
-	hashedPassword, _ := utils.HashPassword("correct_pasВ3sword!")
+	hashedPassword, _ := passwordHasher.Hash("correct_pasВ3sword!")
 	user := models.User{Email: "login@example.com", Password: hashedPassword}
 	if err := testRepo.User().Create(&user); err != nil {
 		t.Fatal("Failed to insert test user:", err)
@@ -105,7 +116,7 @@ func TestLoginHandler_Success(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 
-	LoginHandler(w, req, testRepo)
+	LoginHandler(w, req, testRepo, jwtGen, passwordHasher)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("Expected status %d, got %d", http.StatusOK, w.Code)
@@ -125,9 +136,15 @@ func TestLoginHandler_Success(t *testing.T) {
 }
 
 func TestLoginHandler_InvalidCredentials(t *testing.T) {
+	jwtGen := utils.NewJwtGenerator("test_secret_32_chars_min_for_tests")
+	utils.LoadEnv()
+	passwordHasher, _ := utils.NewPasswordHasher(os.Getenv("PASSWORD_PEPPER"))
+	dsn := utils.GetTestPostgresDSN()
+	testRepo, _ := db.New(dsn)
+	testRepo.ClearAllTables()
 	testRepo.User().ClearUserTable()
 	// Регистрируем пользователя
-	hashedPassword, _ := utils.HashPassword("correct_password!В3")
+	hashedPassword, _ := passwordHasher.Hash("correct_password!В3")
 	user := models.User{Email: "login@example.com", Password: hashedPassword}
 	if err := testRepo.User().Create(&user); err != nil {
 		t.Fatal("Failed to insert test user:", err)
@@ -139,7 +156,7 @@ func TestLoginHandler_InvalidCredentials(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 
-	LoginHandler(w, req, testRepo)
+	LoginHandler(w, req, testRepo, jwtGen, passwordHasher)
 
 	if w.Code != http.StatusUnauthorized {
 		t.Errorf("Expected status %d, got %d", http.StatusUnauthorized, w.Code)
@@ -155,8 +172,14 @@ func TestLoginHandler_InvalidCredentials(t *testing.T) {
 }
 
 func TestLogoutHandler(t *testing.T) {
+	jwtGen := utils.NewJwtGenerator("test_secret_32_chars_min_for_tests")
+	utils.LoadEnv()
+	passwordHasher, _ := utils.NewPasswordHasher(os.Getenv("PASSWORD_PEPPER"))
+	dsn := utils.GetTestPostgresDSN()
+	testRepo, _ := db.New(dsn)
+	testRepo.ClearAllTables()
 	testRepo.User().ClearUserTable()
-	hashedPassword, _ := utils.HashPassword("correct_password")
+	hashedPassword, _ := passwordHasher.Hash("correct_password")
 	user := models.User{Email: "login@example.com", Password: hashedPassword}
 	if err := testRepo.User().Create(&user); err != nil {
 		t.Fatal("Failed to insert test user:", err)
@@ -167,7 +190,7 @@ func TestLogoutHandler(t *testing.T) {
 	loginReq := httptest.NewRequest(http.MethodPost, "/api/v1/login", bytes.NewBufferString(loginBody))
 	loginReq.Header.Set("Content-Type", "application/json")
 	loginW := httptest.NewRecorder()
-	LoginHandler(loginW, loginReq, testRepo)
+	LoginHandler(loginW, loginReq, testRepo, jwtGen, passwordHasher)
 
 	var loginResp AuthResponse
 	if err := json.NewDecoder(loginW.Body).Decode(&loginResp); err != nil {
@@ -179,7 +202,7 @@ func TestLogoutHandler(t *testing.T) {
 	logoutReq.Header.Set("Authorization", "Bearer "+loginResp.Token)
 	logoutW := httptest.NewRecorder()
 
-	LogoutHandler(logoutW, logoutReq)
+	LogoutHandler(logoutW, logoutReq, jwtGen)
 
 	if logoutW.Code != http.StatusOK {
 		t.Errorf("Expected status %d, got %d", http.StatusOK, logoutW.Code)
@@ -192,7 +215,7 @@ func TestLogoutHandler(t *testing.T) {
 		t.Fatal("Failed to decode response:", err)
 	}
 
-	if resp.Message != "успещный логаут" {
-		t.Errorf("Expected message 'успещный логаут', got '%s'", resp.Message)
+	if resp.Message != "успешный логаут" {
+		t.Errorf("Expected message 'успешный логаут', got '%s'", resp.Message)
 	}
 }

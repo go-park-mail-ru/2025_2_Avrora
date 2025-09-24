@@ -3,5 +3,3 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(255) UNIQUE NOT NULL,
     password TEXT NOT NULL
 );
-
-CREATE INDEX IF NOT EXISTS idx_user_email ON users (email);

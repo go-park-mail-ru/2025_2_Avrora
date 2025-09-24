@@ -4,85 +4,69 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"os"
 	"path/filepath"
 	"runtime"
-	"sort"
-	"strings"
-	"sync"
 
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/lib/pq"
 )
 
 type Repo struct {
 	db *sql.DB
-	once sync.Once
 }
 
-func NewRepo() *Repo {
-	return &Repo{}
-}
+func New(dataSourceName string) (*Repo, error) {
+	db, err := sql.Open("postgres", dataSourceName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open database: %w", err)
+	}
 
-func (r *Repo) Init(dataSourceName string) error {
-	var err error
-	r.once.Do(func() {
-		r.db, err = sql.Open("postgres", dataSourceName)
-		if err != nil {
-			return
-		}
+	if err := db.Ping(); err != nil {
+		return nil, fmt.Errorf("failed to ping database: %w", err)
+	}
 
-		err = r.createTables()
-		if err != nil {
-			return
-		}
+	if err := applyMigrations(db); err != nil {
+		return nil, fmt.Errorf("failed to apply migrations: %w", err)
+	}
 
-		err = r.db.Ping()
-		if err != nil {
-			return
-		}
-
-		log.Println("Инициализация базы данных завершена")
-	})
-	return err
+	log.Println("Инициализация базы данных завершена")
+	return &Repo{db: db}, nil
 }
 
 func getMigrationsPath() string {
 	_, filename, _, _ := runtime.Caller(0)
 	baseDir := filepath.Join(filepath.Dir(filename), "..")
-	return filepath.Join(baseDir, "db", "migrations")
+	return "file://" + filepath.Join(baseDir, "db", "migrations")
 }
 
-func (r *Repo) createTables() error {
-	migrationsPath := getMigrationsPath()
-	files, err := os.ReadDir(migrationsPath)
+func applyMigrations(db *sql.DB) error {
+	if err := db.Ping(); err != nil {
+		return fmt.Errorf("DB closed before migrations: %w", err)
+	}
+
+	driver, err := postgres.WithInstance(db, &postgres.Config{})
 	if err != nil {
-		return fmt.Errorf("failed to read migrations directory: %w", err)
+		return err
 	}
 
-	var sqlFiles []string
-	for _, file := range files {
-		if !file.IsDir() && strings.HasSuffix(file.Name(), ".sql") && len(file.Name()) >= 8 {
-			sqlFiles = append(sqlFiles, file.Name())
-		}
+	m, err := migrate.NewWithDatabaseInstance(
+		getMigrationsPath(),
+		"postgres",
+		driver,
+	)
+	if err != nil {
+		return err
 	}
 
-	sort.Strings(sqlFiles)
+	err = m.Up()
+	if err != nil && err != migrate.ErrNoChange {
+		return err
+	}
 
-	log.Println("Применяем миграции...")
-	for _, filename := range sqlFiles {
-		fullPath := filepath.Join(migrationsPath, filename)
-
-		content, err := os.ReadFile(fullPath)
-		if err != nil {
-			return fmt.Errorf("failed to read migration file %s: %w", filename, err)
-		}
-
-		_, err = r.db.Exec(string(content))
-		if err != nil {
-			return fmt.Errorf("failed to execute migration %s: %w", filename, err)
-		}
-
-		log.Printf("✅ Выполнена миграция %s", filename)
+	if err := db.Ping(); err != nil {
+		return fmt.Errorf("DB closed after migrations: %w", err)
 	}
 
 	log.Println("✅ Все миграции применены")
@@ -93,11 +77,31 @@ func (r *Repo) GetDB() *sql.DB {
 	return r.db
 }
 
-func (r *Repo) ClearAllTables() {
-	_, _ = r.GetDB().Exec("DELETE FROM photo")
-	_, _ = r.GetDB().Exec("DELETE FROM offer")
-	_, _ = r.GetDB().Exec("DELETE FROM location")
-	_, _ = r.GetDB().Exec("DELETE FROM region")
-	_, _ = r.GetDB().Exec("DELETE FROM category")
-	_, _ = r.GetDB().Exec("DELETE FROM user")
+func (r *Repo) MigrateDown(steps uint) error {
+	driver, err := postgres.WithInstance(r.db, &postgres.Config{})
+	if err != nil {
+		return err
+	}
+
+	m, err := migrate.NewWithDatabaseInstance(
+		getMigrationsPath(),
+		"postgres",
+		driver,
+	)
+	if err != nil {
+		return err
+	}
+	defer m.Close()
+
+	return m.Steps(-int(steps))
+}
+
+
+func (r *Repo) ClearAllTables() error {
+	_, err := r.db.Exec(`
+		TRUNCATE TABLE offer, users
+		RESTART IDENTITY
+		CASCADE
+	`)
+	return err
 }

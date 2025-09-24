@@ -1,31 +1,41 @@
+// utils/password.go
 package utils
 
 import (
-	"os"
+	"errors"
+	"fmt"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
-func HashPassword(password string) (string, error) {
-    LoadEnv()
-
-    pepper := os.Getenv("PASSWORD_PEPPER")
-    if pepper == "" {
-		return "", bcrypt.ErrHashTooShort
-	}
-
-    data := []byte(pepper + password)
-	hash, err := bcrypt.GenerateFromPassword(data, bcrypt.DefaultCost)
-	return string(hash), err
+type PasswordHasher struct {
+	pepper string
 }
 
-func CheckPasswordHash(password, hash string) bool {
-	pepper := os.Getenv("PASSWORD_PEPPER")
+func NewPasswordHasher(pepper string) (*PasswordHasher, error) {
 	if pepper == "" {
-		return false
+		return nil, errors.New("pepper не может быть пустым")
+	}
+	return &PasswordHasher{pepper: pepper}, nil
+}
+
+func (ph *PasswordHasher) Hash(password string) (string, error) {
+	if password == "" {
+		return "", errors.New("пароль не может быть пустым")
 	}
 
-	data := []byte(pepper + password)
-	err := bcrypt.CompareHashAndPassword([]byte(hash), data)
+	pepperedPassword := password + ph.pepper
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(pepperedPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return "", fmt.Errorf("ошибка хеширования пароля: %w", err)
+	}
+
+	return string(hash), nil
+}
+
+func (ph *PasswordHasher) Compare(password, hash string) bool {
+	pepperedPassword := password + ph.pepper
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(pepperedPassword))
 	return err == nil
 }

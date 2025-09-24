@@ -1,69 +1,58 @@
 package utils
 
 import (
-	"os"
+	"errors"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/joho/godotenv"
 )
 
-var jwtKey []byte
-
-func InitJWTKey() {
-	if err := godotenv.Load(); err != nil {
-        panic(err)
-    }
-    jwtKey = []byte(os.Getenv("JWT_SECRET"))
+type JwtGenerator struct {
+	secret []byte
 }
 
-type Claims struct {
-    UserID string `json:"user_id"`
-    jwt.RegisteredClaims
+func NewJwtGenerator(secret string) *JwtGenerator {
+	if secret == "" {
+		panic("JWT secret cannot be empty")
+	}
+	return &JwtGenerator{
+		secret: []byte(secret),
+	}
 }
 
-func GenerateJWT(userID string) (string, error) {
-    expirationTime := time.Now().Add(24 * time.Hour)
-    claims := &Claims{
-        UserID: userID,
-        RegisteredClaims: jwt.RegisteredClaims{
-            ExpiresAt: jwt.NewNumericDate(expirationTime),
-        },
-    }
-    token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-    return token.SignedString(jwtKey)
-}
-
-func ValidateJWT(tokenStr string) (*Claims, error) {
-	claims := &Claims{}
-	token, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (any, error) {
-		return jwtKey, nil
+func (j *JwtGenerator) GenerateJWT(userID string) (string, error) {
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"user_id": userID,
+		"exp":     time.Now().Add(24 * time.Hour).Unix(), 
 	})
 
+	return token.SignedString(j.secret)
+}
+
+func (j *JwtGenerator) GenerateExpiredJWT() (string, error) {
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"exp": time.Now().Add(-1 * time.Minute).Unix(),
+	})
+	return token.SignedString(j.secret)
+}
+
+func (j *JwtGenerator) ValidateJWT(tokenStr string) (string, error) {
+	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, errors.New("неподдерживаемый метод подписи")
+		}
+		return j.secret, nil
+	})
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	if !token.Valid {
-		return nil, jwt.ErrSignatureInvalid
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		if userID, ok := claims["user_id"].(string); ok {
+			return userID, nil
+		}
+		return "", errors.New("user_id отсутствует в токене")
 	}
 
-	return claims, nil
-}
-
-func SetJWTSecret(key []byte) {
-    jwtKey = key
-}
-
-func GetJWTSecret() []byte {
-    return jwtKey
-}
-
-func GenerateExpiredJWT() (string, error) {
-	claims := jwt.MapClaims{
-		"exp": time.Now().Add(-1 * time.Second).Unix(),
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(GetJWTSecret())
+	return "", errors.New("недействительный токен")
 }

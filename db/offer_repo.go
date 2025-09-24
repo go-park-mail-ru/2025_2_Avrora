@@ -137,3 +137,7 @@ func (or *OfferRepo) CountAll() (int, error) {
 	err := or.db.QueryRow("SELECT COUNT(*) FROM offer").Scan(&total)
 	return total, err
 }
+
+func (or *OfferRepo) ClearOfferTable() {
+	_, _ = or.db.Exec("DELETE FROM offer")
+}
