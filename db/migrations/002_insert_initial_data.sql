@@ -14,7 +14,7 @@ INSERT INTO location (region_id, street, house_number, latitude, longitude) VALU
 (3, 'Тверская улица', '15', 55.760597, 37.617870),
 (3, 'Никольская улица', '10', 55.754430, 37.622940);
 
-INSERT INTO user (email, password) VALUES
+INSERT INTO users (email, password) VALUES
 ('user@example.com', 'hashed_password_here');
 
 INSERT INTO offer (

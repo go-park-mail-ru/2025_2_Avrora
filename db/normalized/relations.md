@@ -1,11 +1,11 @@
 # Схема базы данных: Объявления недвижимости
 
-Схема состоит из шести отношений: `User`, `Offer`, `Location`, `Photo`, `Category`, `Region`.  
+Схема состоит из шести отношений: `Users`, `Offer`, `Location`, `Photo`, `Category`, `Region`.  
 Все отношения находятся в **Нормальной форме Бойса-Кодда (НФБК)**.  
 
 ---
 
-##  Отношение: User
+##  Отношение: Users
 
 **Описание**:  
 Хранит уникальных пользователей системы. Каждый пользователь имеет email и хеш пароля.
@@ -114,13 +114,13 @@ erDiagram
 
     direction TB
 
-    User ||--o{ Offer : "создаёт"
+    Users ||--o{ Offer : "создаёт"
     Category ||--o{ Offer : "категория"
     Region ||--o{ Location : "содержит"
     Location ||--o{ Offer : "расположен в"
     Offer ||--o{ Photo : "имеет"
 
-    User {
+    Users {
         int ID PK
         string Email UK
         string Password
