@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -15,7 +14,7 @@ func main() {
 	utils.LoadEnv()
 	port := os.Getenv("PORT")
 	dbUser := os.Getenv("DB_USER")
-	repo, err := db.New(fmt.Sprintf("postgres://%s@%s:%s/%s?sslmode=disable", dbUser, os.Getenv("DB_HOST"), os.Getenv("DB_PORT"), os.Getenv("DB_NAME")))
+	repo, err := db.New(utils.GetPostgresDSN())
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -33,15 +32,15 @@ func main() {
 	// Auth
 	http.HandleFunc("/api/v1/register", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-        	http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
 		handlers.RegisterHandler(w, r, repo, jwtGen, passwordHasher)
 	})
-	
+
 	http.HandleFunc("/api/v1/login", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-        	http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
 		handlers.LoginHandler(w, r, repo, jwtGen, passwordHasher)
@@ -49,7 +48,7 @@ func main() {
 
 	http.HandleFunc("/api/v1/offers", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
-        	http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
 		handlers.GetOffersHandler(w, r, repo)
