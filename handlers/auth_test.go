@@ -58,17 +58,10 @@ func TestRegisterHandler_Success(t *testing.T) {
 }
 
 func TestRegisterHandler_DuplicateEmail(t *testing.T) {
+	utils.LoadEnv()
 	jwtGen := utils.NewJwtGenerator("test_secret_32_chars_min_for_tests")
 	passwordHasher, _ := utils.NewPasswordHasher(os.Getenv("PASSWORD_PEPPER"))
-	utils.LoadEnv()
-	dsn := fmt.Sprintf(
-		"postgres://%s:%s@%s/%s?sslmode=disable",
-		os.Getenv("DB_USER"),
-		os.Getenv("DB_PASSWORD"),
-		os.Getenv("DB_HOST"),
-		os.Getenv("DB_NAME_TEST"),
-	)
-	testRepo, _ := db.New(dsn)
+	testRepo, _ := db.New(utils.GetTestPostgresDSN())
 	testRepo.ClearAllTables()
 	// Регистрируем первый раз
 	body := `{"email": "duplicate@example.com", "password": "secret123!В"}`
