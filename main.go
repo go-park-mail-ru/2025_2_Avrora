@@ -15,6 +15,7 @@ import (
 func main() {
 	utils.LoadEnv()
 	port := os.Getenv("SERVER_PORT")
+	cors_origin := os.Getenv("CORS_ORIGIN")
 	dbUser := os.Getenv("DB_USER")
 	repo, err := db.New(fmt.Sprintf("postgres://%s@%s:%s/%s?sslmode=disable", dbUser, os.Getenv("DB_HOST"), os.Getenv("DB_PORT"), os.Getenv("DB_NAME")))
 	if err != nil {
@@ -31,29 +32,17 @@ func main() {
 		log.Fatal("Ошибка инициализации хешера паролей:", err)
 	}
 
-	http.HandleFunc("/api/v1/register", middleware.CorsMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
+	http.HandleFunc("POST /api/v1/register", middleware.CorsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		handlers.RegisterHandler(w, r, repo, jwtGen, passwordHasher)
-	}))
+	}, cors_origin))
 
-	http.HandleFunc("/api/v1/login", middleware.CorsMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
+	http.HandleFunc("POST /api/v1/login", middleware.CorsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		handlers.LoginHandler(w, r, repo, jwtGen, passwordHasher)
-	}))
+	}, cors_origin))
 
-	http.HandleFunc("/api/v1/offers", middleware.CorsMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
+	http.HandleFunc("GET /api/v1/offers", middleware.CorsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		handlers.GetOffersHandler(w, r, repo)
-	}))
+	}, cors_origin))
 
 	log.Printf("Starting server on port %s with DB user %s", port, dbUser)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
