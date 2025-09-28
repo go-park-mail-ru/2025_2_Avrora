@@ -46,6 +46,8 @@ func main() {
 		handlers.GetOffersHandler(w, r, repo)
 	})
 
+	mux.Handle("/api/v1/image/", http.StripPrefix("/api/v1/image/", http.FileServer(http.Dir("image/"))))
+
 	handlerWithCORS := middleware.CorsMiddleware(mux, cors_origin)
 
 	log.Printf("Starting server on port %s with DB user %s", port, dbUser)

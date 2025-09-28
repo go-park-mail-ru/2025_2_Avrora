@@ -9,6 +9,7 @@ type Offer struct {
 	CategoryID  int       `json:"category_id"`
 	Title       string    `json:"title"`
 	Description string    `json:"description,omitempty"`
+	Image       string    `json:"image,omitempty"`
 	Price       int       `json:"price"`
 	Area        float64   `json:"area,omitempty"`
 	Rooms       int       `json:"rooms,omitempty"`
