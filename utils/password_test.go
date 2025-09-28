@@ -10,6 +10,7 @@ import (
 // Тест создания PasswordHasher
 // -------------------
 func TestNewPasswordHasher(t *testing.T) {
+	t.Parallel()
 	ph, err := NewPasswordHasher("pepper123")
 	if err != nil {
 		t.Fatalf("не ожидалось ошибки: %v", err)
@@ -20,6 +21,7 @@ func TestNewPasswordHasher(t *testing.T) {
 }
 
 func TestNewPasswordHasher_EmptyPepper(t *testing.T) {
+	t.Parallel()
 	ph, err := NewPasswordHasher("")
 	if err == nil {
 		t.Fatal("ожидалась ошибка для пустого pepper")
@@ -33,6 +35,7 @@ func TestNewPasswordHasher_EmptyPepper(t *testing.T) {
 // Тест хеширования пароля
 // -------------------
 func TestHashPassword(t *testing.T) {
+	t.Parallel()
 	ph, err := NewPasswordHasher("pepper123")
 	if err != nil {
 		t.Fatalf("не ожидалось ошибки при создании PasswordHasher: %v", err)
@@ -49,6 +52,7 @@ func TestHashPassword(t *testing.T) {
 }
 
 func TestHashPassword_EmptyPassword(t *testing.T) {
+	t.Parallel()
 	ph, err := NewPasswordHasher("pepper123")
 	if err != nil {
 		t.Fatalf("не ожидалось ошибки при создании PasswordHasher: %v", err)
@@ -62,6 +66,7 @@ func TestHashPassword_EmptyPassword(t *testing.T) {
 // Тест сравнения пароля
 // -------------------
 func TestComparePassword(t *testing.T) {
+	t.Parallel()
 	ph, _ := NewPasswordHasher("pepper123")
 
 	password := "my_password"
