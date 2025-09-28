@@ -32,18 +32,22 @@ func main() {
 		log.Fatal("Ошибка инициализации хешера паролей:", err)
 	}
 
-	http.HandleFunc("POST /api/v1/register", middleware.CorsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/api/v1/register", func(w http.ResponseWriter, r *http.Request) {
 		handlers.RegisterHandler(w, r, repo, jwtGen, passwordHasher)
-	}, cors_origin))
+	})
 
-	http.HandleFunc("POST /api/v1/login", middleware.CorsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/api/v1/login", func(w http.ResponseWriter, r *http.Request) {
 		handlers.LoginHandler(w, r, repo, jwtGen, passwordHasher)
-	}, cors_origin))
+	})
 
-	http.HandleFunc("GET /api/v1/offers", middleware.CorsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/api/v1/offers", func(w http.ResponseWriter, r *http.Request) {
 		handlers.GetOffersHandler(w, r, repo)
-	}, cors_origin))
+	})
+
+	handlerWithCORS := middleware.CorsMiddleware(mux, cors_origin)
 
 	log.Printf("Starting server on port %s with DB user %s", port, dbUser)
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+	log.Fatal(http.ListenAndServe(":"+port, handlerWithCORS))
 }
