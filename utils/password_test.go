@@ -81,7 +81,9 @@ func TestComparePassword(t *testing.T) {
 	}
 }
 
-// Что-то типо утилиты для работы TestHashPassword_EmptyPassword
+// -------------------
+// Что-то типо утилиты для  TestHashPassword_EmptyPassword
+// -------------------
 func EqualErrors(t *testing.T, expected, received error) {
 	if expected == nil {
 		if received != nil {

@@ -14,6 +14,9 @@ import (
 	"github.com/go-park-mail-ru/2025_2_Avrora/utils"
 )
 
+// ------------------------
+// setupTestRepo инициализирует репозиторий и очищает БД
+// ------------------------
 func setupTestRepo(t *testing.T) *db.Repo {
 	t.Helper()
 
@@ -32,13 +35,53 @@ func setupTestRepo(t *testing.T) *db.Repo {
 	if err := repo.ClearAllTables(); err != nil {
 		t.Fatal("failed to clear tables:", err)
 	}
+
+	t.Cleanup(func() {
+		repo.GetDB().Close()
+	})
+
 	return repo
 }
+
+// ------------------------
+// createTestUser создает пользователя с заданным email и паролем
+// ------------------------
+
+func createTestUser(t *testing.T, repo *db.Repo, email, password string) *models.User {
+	t.Helper()
+	passwordHasher, err := utils.NewPasswordHasher(os.Getenv("PASSWORD_PEPPER"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	hashedPassword, err := passwordHasher.Hash(password)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	user := &models.User{
+		Email:    email,
+		Password: hashedPassword,
+	}
+
+	if err := repo.User().Create(user); err != nil {
+		t.Fatal(err)
+	}
+
+	return user
+}
+
+// ------------------------
+// Сами тесты
+// ------------------------
 
 func TestRegisterHandler_Success(t *testing.T) {
 	jwtGen := utils.NewJwtGenerator("test_secret_32_chars_min_for_tests")
 	repo := setupTestRepo(t)
-	passwordHasher, _ := utils.NewPasswordHasher(os.Getenv("PASSWORD_PEPPER"))
+	passwordHasher, err := utils.NewPasswordHasher(os.Getenv("PASSWORD_PEPPER"))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	body := `{"email": "test@example.com", "password": "Secret123"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/register", bytes.NewBufferString(body))
@@ -55,9 +98,11 @@ func TestRegisterHandler_Success(t *testing.T) {
 	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
 		t.Fatal("Failed to decode response:", err)
 	}
+
 	if resp.User.Email != "test@example.com" {
 		t.Errorf("Expected email test@example.com, got %s", resp.User.Email)
 	}
+
 	if resp.Token == "" {
 		t.Error("Expected JWT token, got empty")
 	}
@@ -66,30 +111,31 @@ func TestRegisterHandler_Success(t *testing.T) {
 func TestRegisterHandler_DuplicateEmail(t *testing.T) {
 	jwtGen := utils.NewJwtGenerator("test_secret_32_chars_min_for_tests")
 	repo := setupTestRepo(t)
-	passwordHasher, _ := utils.NewPasswordHasher(os.Getenv("PASSWORD_PEPPER"))
+	passwordHasher, err := utils.NewPasswordHasher(os.Getenv("PASSWORD_PEPPER"))
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	body := `{"email": "duplicate@example.com", "password": "Secret123"}`
+	email := "duplicate@example.com"
+	createTestUser(t, repo, email, "Secret123")
 
-	// первый запрос
-	req1 := httptest.NewRequest(http.MethodPost, "/api/v1/register", bytes.NewBufferString(body))
-	req1.Header.Set("Content-Type", "application/json")
-	w1 := httptest.NewRecorder()
-	RegisterHandler(w1, req1, repo, jwtGen, passwordHasher)
+	body := `{"email": "` + email + `", "password": "Secret123"}`
 
-	// второй запрос (тот же email)
-	req2 := httptest.NewRequest(http.MethodPost, "/api/v1/register", bytes.NewBufferString(body))
-	req2.Header.Set("Content-Type", "application/json")
-	w2 := httptest.NewRecorder()
-	RegisterHandler(w2, req2, repo, jwtGen, passwordHasher)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/register", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
 
-	if w2.Code != http.StatusConflict {
-		t.Errorf("Expected status %d, got %d", http.StatusConflict, w2.Code)
+	RegisterHandler(w, req, repo, jwtGen, passwordHasher)
+
+	if w.Code != http.StatusConflict {
+		t.Errorf("Expected status %d, got %d", http.StatusConflict, w.Code)
 	}
 
 	var resp response.ErrorResp
-	if err := json.NewDecoder(w2.Body).Decode(&resp); err != nil {
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
 		t.Fatal("Failed to decode response:", err)
 	}
+
 	if resp.Error != "Пользователь с таким email уже существует" {
 		t.Errorf("Expected error message, got '%s'", resp.Error)
 	}
@@ -98,16 +144,15 @@ func TestRegisterHandler_DuplicateEmail(t *testing.T) {
 func TestLoginHandler_Success(t *testing.T) {
 	jwtGen := utils.NewJwtGenerator("test_secret_32_chars_min_for_tests")
 	repo := setupTestRepo(t)
-	passwordHasher, _ := utils.NewPasswordHasher(os.Getenv("PASSWORD_PEPPER"))
-
-	// регаем пользователя вручную с валидным паролем
-	hashedPassword, _ := passwordHasher.Hash("Secret123")
-	user := models.User{Email: "login@example.com", Password: hashedPassword}
-	if err := repo.User().Create(&user); err != nil {
-		t.Fatal("Failed to insert test user:", err)
+	passwordHasher, err := utils.NewPasswordHasher(os.Getenv("PASSWORD_PEPPER"))
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	body := `{"email": "login@example.com", "password": "Secret123"}`
+	email := "login@example.com"
+	createTestUser(t, repo, email, "Secret123")
+
+	body := `{"email": "` + email + `", "password": "Secret123"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/login", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -122,9 +167,11 @@ func TestLoginHandler_Success(t *testing.T) {
 	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
 		t.Fatal("Failed to decode response:", err)
 	}
-	if resp.User.Email != "login@example.com" {
-		t.Errorf("Expected email login@example.com, got %s", resp.User.Email)
+
+	if resp.User.Email != email {
+		t.Errorf("Expected email %s, got %s", email, resp.User.Email)
 	}
+
 	if resp.Token == "" {
 		t.Error("Expected JWT token, got empty")
 	}
@@ -133,15 +180,15 @@ func TestLoginHandler_Success(t *testing.T) {
 func TestLoginHandler_InvalidCredentials(t *testing.T) {
 	jwtGen := utils.NewJwtGenerator("test_secret_32_chars_min_for_tests")
 	repo := setupTestRepo(t)
-	passwordHasher, _ := utils.NewPasswordHasher(os.Getenv("PASSWORD_PEPPER"))
-
-	hashedPassword, _ := passwordHasher.Hash("Secret123")
-	user := models.User{Email: "login@example.com", Password: hashedPassword}
-	if err := repo.User().Create(&user); err != nil {
-		t.Fatal("Failed to insert test user:", err)
+	passwordHasher, err := utils.NewPasswordHasher(os.Getenv("PASSWORD_PEPPER"))
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	body := `{"email": "login@example.com", "password": "WrongPass1"}`
+	email := "login@example.com"
+	createTestUser(t, repo, email, "Secret123")
+
+	body := `{"email": "` + email + `", "password": "WrongPass1"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/login", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -156,6 +203,7 @@ func TestLoginHandler_InvalidCredentials(t *testing.T) {
 	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
 		t.Fatal("Failed to decode response:", err)
 	}
+
 	if resp.Error != "невалидные учетные данные" {
 		t.Errorf("Expected error 'невалидные учетные данные', got '%s'", resp.Error)
 	}
@@ -164,15 +212,15 @@ func TestLoginHandler_InvalidCredentials(t *testing.T) {
 func TestLogoutHandler(t *testing.T) {
 	jwtGen := utils.NewJwtGenerator("test_secret_32_chars_min_for_tests")
 	repo := setupTestRepo(t)
-	passwordHasher, _ := utils.NewPasswordHasher(os.Getenv("PASSWORD_PEPPER"))
-
-	hashedPassword, _ := passwordHasher.Hash("Secret123")
-	user := models.User{Email: "login@example.com", Password: hashedPassword}
-	if err := repo.User().Create(&user); err != nil {
-		t.Fatal("Failed to insert test user:", err)
+	passwordHasher, err := utils.NewPasswordHasher(os.Getenv("PASSWORD_PEPPER"))
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	loginBody := `{"email": "login@example.com", "password": "Secret123"}`
+	email := "login@example.com"
+	createTestUser(t, repo, email, "Secret123")
+
+	loginBody := `{"email": "` + email + `", "password": "Secret123"}`
 	loginReq := httptest.NewRequest(http.MethodPost, "/api/v1/login", bytes.NewBufferString(loginBody))
 	loginReq.Header.Set("Content-Type", "application/json")
 	loginW := httptest.NewRecorder()
