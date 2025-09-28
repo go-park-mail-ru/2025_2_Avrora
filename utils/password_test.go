@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"errors"
+	"strings"
 	"testing"
 )
 
@@ -31,7 +33,10 @@ func TestNewPasswordHasher_EmptyPepper(t *testing.T) {
 // Тест хеширования пароля
 // -------------------
 func TestHashPassword(t *testing.T) {
-	ph, _ := NewPasswordHasher("pepper123")
+	ph, err := NewPasswordHasher("pepper123")
+	if err != nil {
+		t.Fatalf("не ожидалось ошибки при создании PasswordHasher: %v", err)
+	}
 
 	hash, err := ph.Hash("my_password")
 	if err != nil {
@@ -44,12 +49,13 @@ func TestHashPassword(t *testing.T) {
 }
 
 func TestHashPassword_EmptyPassword(t *testing.T) {
-	ph, _ := NewPasswordHasher("pepper123")
-
-	_, err := ph.Hash("")
-	if err == nil {
-		t.Fatal("ожидалась ошибка при пустом пароле")
+	ph, err := NewPasswordHasher("pepper123")
+	if err != nil {
+		t.Fatalf("не ожидалось ошибки при создании PasswordHasher: %v", err)
 	}
+
+	_, err = ph.Hash("")
+	EqualErrors(t, errors.New("пароль не может быть пустым"), err)
 }
 
 // -------------------
@@ -67,5 +73,23 @@ func TestComparePassword(t *testing.T) {
 
 	if ph.Compare("wrong_password", hash) {
 		t.Fatal("ожидалось, что неверный пароль не совпадает с хешем")
+	}
+}
+
+// Что-то типо утилиты для работы TestHashPassword_EmptyPassword
+func EqualErrors(t *testing.T, expected, received error) {
+	if expected == nil {
+		if received != nil {
+			t.Fatalf("ожидалась ошибка nil, получили %v", received)
+		}
+		return
+	}
+
+	if received == nil {
+		t.Fatalf("ожидалась ошибка %v, получили nil", expected)
+	}
+
+	if !strings.Contains(received.Error(), expected.Error()) {
+		t.Fatalf("ожидалась ошибка, содержащая %q, получили %q", expected.Error(), received.Error())
 	}
 }
