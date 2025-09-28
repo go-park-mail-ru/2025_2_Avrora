@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -57,19 +56,18 @@ func validatePassword(password string) bool {
 	return hasUpper && hasLower && hasDigit
 }
 
+// --- Валидация для логина ---
 func validateLoginRequest(req *LoginRequest) error {
 	if strings.TrimSpace(req.Email) == "" {
 		return errors.New("email не может быть пустым")
 	}
-	if !validateEmail(req.Email) {
-		return errors.New("невалидный формат email")
-	}
-	if !validatePassword(req.Password) {
-		return errors.New("невалидные учетные данные")
+	if strings.TrimSpace(req.Password) == "" {
+		return errors.New("пароль не может быть пустым")
 	}
 	return nil
 }
 
+// --- Валидация для регистрации ---
 func validateRegisterRequest(req *RegisterRequest) error {
 	if strings.TrimSpace(req.Email) == "" {
 		return errors.New("email не может быть пустым")
@@ -77,12 +75,13 @@ func validateRegisterRequest(req *RegisterRequest) error {
 	if !validateEmail(req.Email) {
 		return errors.New("невалидный формат email")
 	}
-	if len(req.Password) < 6 {
+	if !validatePassword(req.Password) {
 		return errors.New("пароль должен быть не менее 6 символов, иметь разный регистр, иметь хотя бы одну цифру")
 	}
 	return nil
 }
 
+// --- Регистрация ---
 func RegisterHandler(w http.ResponseWriter, r *http.Request, repo *db.Repo, jwtGen *utils.JwtGenerator, passwordHasher *utils.PasswordHasher) {
 	var req RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -96,7 +95,7 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request, repo *db.Repo, jwtG
 	}
 
 	user, err := repo.User().FindByEmail(req.Email)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	if err != nil {
 		response.HandleError(w, err, http.StatusInternalServerError, "ошибка бд при поиске пользователя")
 		return
 	}
@@ -135,6 +134,7 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request, repo *db.Repo, jwtG
 	})
 }
 
+// --- Логин ---
 func LoginHandler(w http.ResponseWriter, r *http.Request, repo *db.Repo, jwtGen *utils.JwtGenerator, passwordHasher *utils.PasswordHasher) {
 	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -149,11 +149,11 @@ func LoginHandler(w http.ResponseWriter, r *http.Request, repo *db.Repo, jwtGen 
 
 	user, err := repo.User().FindByEmail(req.Email)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			response.HandleError(w, nil, http.StatusUnauthorized, "невалидные учетные данные")
-			return
-		}
 		response.HandleError(w, err, http.StatusInternalServerError, "ошибка бд при поиске пользователя")
+		return
+	}
+	if user == nil {
+		response.HandleError(w, nil, http.StatusUnauthorized, "невалидные учетные данные")
 		return
 	}
 
@@ -176,6 +176,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request, repo *db.Repo, jwtGen 
 	})
 }
 
+// --- Логаут ---
 func LogoutHandler(w http.ResponseWriter, r *http.Request, jwtGen *utils.JwtGenerator) {
 	expiredToken, err := jwtGen.GenerateExpiredJWT()
 	if err != nil {

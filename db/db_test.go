@@ -4,71 +4,62 @@ import (
 	"os"
 	"testing"
 
+	"github.com/go-park-mail-ru/2025_2_Avrora/utils"
 	_ "github.com/lib/pq"
 )
 
-func TestInitDB(t *testing.T) {
-	t.Parallel()
+// setupTestEnv выставляет переменные окружения для тестовой БД
+func setupTestEnv() {
 	os.Setenv("DB_USER", "postgres")
 	os.Setenv("DB_PASSWORD", "postgres")
 	os.Setenv("DB_HOST", "localhost")
 	os.Setenv("DB_PORT", "5432")
-	os.Setenv("DB_NAME", "avrora_test")
-	// ... и т.д.
+	os.Setenv("DB_NAME", "2025_2_Avrora_test")
+}
+
+// setupTestRepo инициализирует репозиторий и очищает все таблицы
+func setupTestRepo(t *testing.T) *Repo {
+	t.Helper()
+	setupTestEnv()
+
+	dsn := utils.GetPostgresDSN()
+	t.Log("DSN:", dsn) // для проверки правильности DSN
+
+	repo, err := New(dsn)
+	if err != nil {
+		t.Fatal("Failed to connect to test DB:", err)
+	}
+
+	if err := repo.ClearAllTables(); err != nil {
+		t.Fatal("Failed to clear tables:", err)
+	}
+
+	return repo
 }
 
 func TestDBConnection(t *testing.T) {
-	dsn := "postgres://postgres:postgres@localhost/2025_2_Avrora_test?sslmode=disable"
-	repo, err := New(dsn)
-	if err != nil {
-		t.Fatal(err)
-	}
+	repo := setupTestRepo(t)
 	defer repo.db.Close()
 
-	err = repo.db.Ping()
-	if err != nil {
+	if err := repo.db.Ping(); err != nil {
 		t.Fatal("Ping failed:", err)
-	}
-
-	err = repo.ClearAllTables()
-	if err != nil {
-		t.Fatal("Clear failed:", err)
 	}
 }
 
 func TestClearAllTables(t *testing.T) {
-	dsn := "postgres://postgres:postgres@localhost/2025_2_Avrora_test?sslmode=disable"
-
-	repo, err := New(dsn)
-	if err != nil {
-		t.Fatal(err)
-	}
+	repo := setupTestRepo(t)
 	defer repo.db.Close()
 
-	testDB := repo.GetDB()
-
-	err = testDB.Ping()
-	if err != nil {
-		t.Fatal(err)
+	if err := repo.ClearAllTables(); err != nil {
+		t.Fatal("Clear failed:", err)
 	}
-
-	err = repo.ClearAllTables()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 }
 
 func TestGetDB(t *testing.T) {
-	dsn := "postgres://postgres:postgres@localhost/2025_2_Avrora_test?sslmode=disable"
+	repo := setupTestRepo(t)
+	defer repo.db.Close()
 
-	repo, err := New(dsn)
-	if err != nil {
-		t.Fatalf("Failed to initialize test DB: %v\n", err)
-	}
-	testDB := repo.GetDB()
-
-	if testDB == nil {
+	if repo.GetDB() == nil {
 		t.Fatal("could not getDB()")
 	}
 }

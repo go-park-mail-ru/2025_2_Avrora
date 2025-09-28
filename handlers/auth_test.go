@@ -17,12 +17,11 @@ import (
 func setupTestRepo(t *testing.T) *db.Repo {
 	t.Helper()
 
-	// задаём окружение прямо здесь → тесты независимы от .env
 	os.Setenv("DB_USER", "postgres")
 	os.Setenv("DB_PASSWORD", "postgres")
 	os.Setenv("DB_HOST", "localhost")
 	os.Setenv("DB_PORT", "5432")
-	os.Setenv("DB_NAME", "testdb") // всегда отдельная тестовая база
+	os.Setenv("DB_NAME", "testdb")
 	os.Setenv("PASSWORD_PEPPER", "pepper123")
 
 	dsn := utils.GetPostgresDSN()
@@ -41,7 +40,7 @@ func TestRegisterHandler_Success(t *testing.T) {
 	repo := setupTestRepo(t)
 	passwordHasher, _ := utils.NewPasswordHasher(os.Getenv("PASSWORD_PEPPER"))
 
-	body := `{"email": "test@example.com", "password": "secret123"}`
+	body := `{"email": "test@example.com", "password": "Secret123"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/register", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -69,7 +68,8 @@ func TestRegisterHandler_DuplicateEmail(t *testing.T) {
 	repo := setupTestRepo(t)
 	passwordHasher, _ := utils.NewPasswordHasher(os.Getenv("PASSWORD_PEPPER"))
 
-	body := `{"email": "duplicate@example.com", "password": "secret123"}`
+	body := `{"email": "duplicate@example.com", "password": "Secret123"}`
+
 	// первый запрос
 	req1 := httptest.NewRequest(http.MethodPost, "/api/v1/register", bytes.NewBufferString(body))
 	req1.Header.Set("Content-Type", "application/json")
@@ -100,14 +100,14 @@ func TestLoginHandler_Success(t *testing.T) {
 	repo := setupTestRepo(t)
 	passwordHasher, _ := utils.NewPasswordHasher(os.Getenv("PASSWORD_PEPPER"))
 
-	// регаем пользователя вручную
-	hashedPassword, _ := passwordHasher.Hash("correct_password")
+	// регаем пользователя вручную с валидным паролем
+	hashedPassword, _ := passwordHasher.Hash("Secret123")
 	user := models.User{Email: "login@example.com", Password: hashedPassword}
 	if err := repo.User().Create(&user); err != nil {
 		t.Fatal("Failed to insert test user:", err)
 	}
 
-	body := `{"email": "login@example.com", "password": "correct_password"}`
+	body := `{"email": "login@example.com", "password": "Secret123"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/login", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -135,15 +135,13 @@ func TestLoginHandler_InvalidCredentials(t *testing.T) {
 	repo := setupTestRepo(t)
 	passwordHasher, _ := utils.NewPasswordHasher(os.Getenv("PASSWORD_PEPPER"))
 
-	// регаем пользователя
-	hashedPassword, _ := passwordHasher.Hash("correct_password")
+	hashedPassword, _ := passwordHasher.Hash("Secret123")
 	user := models.User{Email: "login@example.com", Password: hashedPassword}
 	if err := repo.User().Create(&user); err != nil {
 		t.Fatal("Failed to insert test user:", err)
 	}
 
-	// пробуем неверный пароль
-	body := `{"email": "login@example.com", "password": "wrong_password"}`
+	body := `{"email": "login@example.com", "password": "WrongPass1"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/login", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -168,14 +166,13 @@ func TestLogoutHandler(t *testing.T) {
 	repo := setupTestRepo(t)
 	passwordHasher, _ := utils.NewPasswordHasher(os.Getenv("PASSWORD_PEPPER"))
 
-	hashedPassword, _ := passwordHasher.Hash("correct_password")
+	hashedPassword, _ := passwordHasher.Hash("Secret123")
 	user := models.User{Email: "login@example.com", Password: hashedPassword}
 	if err := repo.User().Create(&user); err != nil {
 		t.Fatal("Failed to insert test user:", err)
 	}
 
-	// логинимся
-	loginBody := `{"email": "login@example.com", "password": "correct_password"}`
+	loginBody := `{"email": "login@example.com", "password": "Secret123"}`
 	loginReq := httptest.NewRequest(http.MethodPost, "/api/v1/login", bytes.NewBufferString(loginBody))
 	loginReq.Header.Set("Content-Type", "application/json")
 	loginW := httptest.NewRecorder()
@@ -186,7 +183,6 @@ func TestLogoutHandler(t *testing.T) {
 		t.Fatal("Failed to decode login response:", err)
 	}
 
-	// logout
 	logoutReq := httptest.NewRequest(http.MethodPost, "/api/v1/logout", nil)
 	logoutReq.Header.Set("Authorization", "Bearer "+loginResp.Token)
 	logoutW := httptest.NewRecorder()
