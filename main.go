@@ -42,6 +42,10 @@ func main() {
 		handlers.LoginHandler(w, r, repo, jwtGen, passwordHasher)
 	})
 
+	mux.HandleFunc("/api/v1/logout", func(w http.ResponseWriter, r *http.Request) {
+		handlers.LogoutHandler(w, r, jwtGen)
+	})
+
 	mux.HandleFunc("/api/v1/offers", func(w http.ResponseWriter, r *http.Request) {
 		handlers.GetOffersHandler(w, r, repo)
 	})
