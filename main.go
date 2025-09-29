@@ -7,12 +7,14 @@ import (
 
 	"github.com/go-park-mail-ru/2025_2_Avrora/db"
 	"github.com/go-park-mail-ru/2025_2_Avrora/handlers"
+	"github.com/go-park-mail-ru/2025_2_Avrora/middleware"
 	"github.com/go-park-mail-ru/2025_2_Avrora/utils"
 )
 
 func main() {
 	utils.LoadEnv()
-	port := os.Getenv("PORT")
+	port := os.Getenv("SERVER_PORT")
+	cors_origin := os.Getenv("CORS_ORIGIN")
 	dbUser := os.Getenv("DB_USER")
 	repo, err := db.New(utils.GetPostgresDSN())
 	if err != nil {
@@ -29,31 +31,28 @@ func main() {
 		log.Fatal("Ошибка инициализации хешера паролей:", err)
 	}
 
-	// Auth
-	http.HandleFunc("/api/v1/register", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/api/v1/register", func(w http.ResponseWriter, r *http.Request) {
 		handlers.RegisterHandler(w, r, repo, jwtGen, passwordHasher)
 	})
 
-	http.HandleFunc("/api/v1/login", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
+	mux.HandleFunc("/api/v1/login", func(w http.ResponseWriter, r *http.Request) {
 		handlers.LoginHandler(w, r, repo, jwtGen, passwordHasher)
 	})
 
-	http.HandleFunc("/api/v1/offers", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
+	mux.HandleFunc("/api/v1/logout", func(w http.ResponseWriter, r *http.Request) {
+		handlers.LogoutHandler(w, r, jwtGen)
+	})
+
+	mux.HandleFunc("/api/v1/offers", func(w http.ResponseWriter, r *http.Request) {
 		handlers.GetOffersHandler(w, r, repo)
 	})
 
+	mux.Handle("/api/v1/image/", http.StripPrefix("/api/v1/image/", http.FileServer(http.Dir("image/"))))
+
+	handlerWithCORS := middleware.CorsMiddleware(mux, cors_origin)
+
 	log.Printf("Starting server on port %s with DB user %s", port, dbUser)
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+	log.Fatal(http.ListenAndServe(":"+port, handlerWithCORS))
 }

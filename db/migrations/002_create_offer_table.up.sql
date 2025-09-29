@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS offer (
     category_id INT NOT NULL,
     title VARCHAR(255) NOT NULL,
     description TEXT,
+    image TEXT,
     price INT NOT NULL CHECK (price >= 0),
     area DECIMAL(10, 2) CHECK (area > 0),
     rooms INT CHECK (rooms >= 0),

@@ -2,7 +2,6 @@ package db
 
 import (
 	"database/sql"
-	"errors"
 	"time"
 
 	"github.com/go-park-mail-ru/2025_2_Avrora/models"
@@ -29,6 +28,7 @@ func (or *OfferRepo) FindByID(id int) (*models.Offer, error) {
 		&offer.CategoryID,
 		&offer.Title,
 		&offer.Description,
+		&offer.Image,
 		&offer.Price,
 		&offer.Area,
 		&offer.Rooms,
@@ -38,9 +38,6 @@ func (or *OfferRepo) FindByID(id int) (*models.Offer, error) {
 		&offer.UpdatedAt,
 	)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
-		}
 		return nil, err
 	}
 	return offer, nil
@@ -50,7 +47,7 @@ func (or *OfferRepo) FindAll(page, limit int) ([]models.Offer, error) {
 	offset := (page - 1) * limit
 
 	rows, err := or.db.Query(`
-		SELECT id, user_id, location_id, category_id, title, description, price, area, rooms, address, offer_type, created_at, updated_at
+		SELECT id, user_id, location_id, category_id, title, description, image, price, area, rooms, address, offer_type, created_at, updated_at
 		FROM offer
 		ORDER BY created_at DESC
 		LIMIT $1 OFFSET $2
@@ -70,6 +67,7 @@ func (or *OfferRepo) FindAll(page, limit int) ([]models.Offer, error) {
 			&o.CategoryID,
 			&o.Title,
 			&o.Description,
+			&o.Image,
 			&o.Price,
 			&o.Area,
 			&o.Rooms,
@@ -92,8 +90,8 @@ func (or *OfferRepo) Create(offer *models.Offer) error {
 	offer.UpdatedAt = offer.CreatedAt
 
 	return or.db.QueryRow(`
-		INSERT INTO offer (user_id, location_id, category_id, title, description, price, area, rooms, address, offer_type, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+		INSERT INTO offer (user_id, location_id, category_id, title, description, image, price, area, rooms, address, offer_type, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 		RETURNING id
 	`,
 		offer.UserID,
@@ -101,6 +99,7 @@ func (or *OfferRepo) Create(offer *models.Offer) error {
 		offer.CategoryID,
 		offer.Title,
 		offer.Description,
+		offer.Image,
 		offer.Price,
 		offer.Area,
 		offer.Rooms,
@@ -116,11 +115,12 @@ func (or *OfferRepo) Update(offer *models.Offer) error {
 
 	_, err := or.db.Exec(`
 		UPDATE offer
-		SET title = $1, description = $2, price = $3, area = $4, rooms = $5, address = $6, offer_type = $7, updated_at = $8
-		WHERE id = $9
+		SET title = $1, description = $2, image = $3, price = $4, area = $5, rooms = $6, address = $7, offer_type = $8, updated_at = $9
+		WHERE id = $10
 	`,
 		offer.Title,
 		offer.Description,
+		offer.Image,
 		offer.Price,
 		offer.Area,
 		offer.Rooms,
