@@ -49,8 +49,8 @@ func TestRegisterHandler_Success(t *testing.T) {
 		t.Fatal("Failed to decode response:", err)
 	}
 
-	if resp.User.Email != "test@example.com" {
-		t.Errorf("Expected email test@example.com, got %s", resp.User.Email)
+	if resp.Email != "test@example.com" {
+		t.Errorf("Expected email test@example.com, got %s", resp.Email)
 	}
 	if resp.Token == "" {
 		t.Error("Expected JWT token, got empty")
@@ -120,8 +120,8 @@ func TestLoginHandler_Success(t *testing.T) {
 		t.Fatal("Failed to decode response:", err)
 	}
 
-	if resp.User.Email != "login@example.com" {
-		t.Errorf("Expected email login@example.com, got %s", resp.User.Email)
+	if resp.Email != "login@example.com" {
+		t.Errorf("Expected email login@example.com, got %s", resp.Email)
 	}
 	if resp.Token == "" {
 		t.Error("Expected JWT token, got empty")

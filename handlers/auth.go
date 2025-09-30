@@ -28,7 +28,7 @@ type LoginRequest struct {
 
 type AuthResponse struct {
 	Token string       `json:"token"`
-	User  *models.User `json:"user"`
+	Email string       `json:"email"`
 }
 
 func validateEmail(email string) bool {
@@ -129,9 +129,7 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request, repo *db.Repo, jwtG
 
 	response.WriteJSON(w, http.StatusCreated, AuthResponse{
 		Token: token,
-		User: &models.User{
-			Email: req.Email,
-		},
+		Email: req.Email,
 	})
 }
 
@@ -170,9 +168,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request, repo *db.Repo, jwtGen 
 
 	response.WriteJSON(w, http.StatusOK, AuthResponse{
 		Token: token,
-		User: &models.User{
-			Email: req.Email,
-		},
+		Email: req.Email,
 	})
 }
 
