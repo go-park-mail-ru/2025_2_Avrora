@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -17,7 +16,7 @@ func main() {
 	port := os.Getenv("SERVER_PORT")
 	cors_origin := os.Getenv("CORS_ORIGIN")
 	dbUser := os.Getenv("DB_USER")
-	repo, err := db.New(fmt.Sprintf("postgres://%s@%s:%s/%s?sslmode=disable", dbUser, os.Getenv("DB_HOST"), os.Getenv("DB_PORT"), os.Getenv("DB_NAME")))
+	repo, err := db.New(utils.GetPostgresDSN())
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -3,14 +3,13 @@ package db
 import (
 	"database/sql"
 	"fmt"
-	"log"
-	"path/filepath"
-	"runtime"
-
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/lib/pq"
+	"log"
+	"os"
+	"path/filepath"
 )
 
 type Repo struct {
@@ -36,9 +35,27 @@ func New(dataSourceName string) (*Repo, error) {
 }
 
 func getMigrationsPath() string {
-	_, filename, _, _ := runtime.Caller(0)
-	baseDir := filepath.Join(filepath.Dir(filename), "..")
-	return "file://" + filepath.Join(baseDir, "db", "migrations")
+	// Берём текущий рабочий каталог
+	wd, err := os.Getwd()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Ищем папку migrations в нескольких стандартных местах
+	candidates := []string{
+		filepath.Join(wd, "db", "migrations"),             // основной вариант
+		filepath.Join(wd, "..", "db", "migrations"),       // для тестов из /db
+		filepath.Join(wd, "..", "..", "db", "migrations"), // на случай глубокого запуска
+	}
+
+	for _, path := range candidates {
+		if info, err := os.Stat(path); err == nil && info.IsDir() {
+			return "file://" + filepath.ToSlash(path)
+		}
+	}
+
+	log.Fatalf("Migrations folder not found in any of the expected locations: %v", candidates)
+	return ""
 }
 
 func applyMigrations(db *sql.DB) error {
@@ -95,7 +112,6 @@ func (r *Repo) MigrateDown(steps uint) error {
 
 	return m.Steps(-int(steps))
 }
-
 
 func (r *Repo) ClearAllTables() error {
 	_, err := r.db.Exec(`
