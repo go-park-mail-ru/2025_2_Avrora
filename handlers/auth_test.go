@@ -96,8 +96,8 @@ func TestRegisterHandler_Success(t *testing.T) {
 		t.Fatal("Failed to decode response:", err)
 	}
 
-	if resp.User.Email != "test@example.com" {
-		t.Errorf("Expected email test@example.com, got %s", resp.User.Email)
+	if resp.Email != "test@example.com" {
+		t.Errorf("Expected email test@example.com, got %s", resp.Email)
 	}
 
 	if resp.Token == "" {
@@ -175,6 +175,9 @@ func TestLoginHandler_Success(t *testing.T) {
 
 	if resp.User.Email != email {
 		t.Errorf("Expected email %s, got %s", email, resp.User.Email)
+
+	if resp.Email != "login@example.com" {
+		t.Errorf("Expected email login@example.com, got %s", resp.Email)
 	}
 
 	if resp.Token == "" {
