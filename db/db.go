@@ -4,8 +4,10 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
@@ -35,10 +37,45 @@ func New(dataSourceName string) (*Repo, error) {
 	return &Repo{db: db}, nil
 }
 
+// buildMigrationPath формирует корректный file:// путь под текущую ОС
+func buildMigrationPath(path string) string {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		log.Fatalf("❌ Не удалось вычислить абсолютный путь для миграций: %v", err)
+	}
+
+	// Windows → заменяем слэши и добавляем "file:///"
+	if runtime.GOOS == "windows" {
+		abs = strings.ReplaceAll(abs, `\`, `/`)
+		return fmt.Sprintf("file:///%s", abs)
+	}
+
+	// Linux/Mac → обычный путь
+	return fmt.Sprintf("file://%s", abs)
+}
+
 func getMigrationsPath() string {
-	_, filename, _, _ := runtime.Caller(0)
-	baseDir := filepath.Join(filepath.Dir(filename), "..")
-	return "file://" + filepath.Join(baseDir, "db", "migrations")
+	// Берём текущий рабочий каталог
+	wd, err := os.Getwd()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Ищем папку migrations в нескольких стандартных местах
+	candidates := []string{
+		filepath.Join(wd, "db", "migrations"),             // основной вариант
+		filepath.Join(wd, "..", "db", "migrations"),       // для тестов из /db
+		filepath.Join(wd, "..", "..", "db", "migrations"), // на случай глубокого запуска
+	}
+
+	for _, path := range candidates {
+		if info, err := os.Stat(path); err == nil && info.IsDir() {
+			return "file://" + filepath.ToSlash(path)
+		}
+	}
+
+	log.Fatalf("Migrations folder not found in any of the expected locations: %v", candidates)
+	return ""
 }
 
 func applyMigrations(db *sql.DB) error {
@@ -59,6 +96,8 @@ func applyMigrations(db *sql.DB) error {
 	if err != nil {
 		return err
 	}
+
+	// ⚡ убрал defer m.Close()
 
 	err = m.Up()
 	if err != nil && err != migrate.ErrNoChange {
@@ -91,11 +130,10 @@ func (r *Repo) MigrateDown(steps uint) error {
 	if err != nil {
 		return err
 	}
-	defer m.Close()
 
+	// ⚡ убрал defer m.Close()
 	return m.Steps(-int(steps))
 }
-
 
 func (r *Repo) ClearAllTables() error {
 	_, err := r.db.Exec(`

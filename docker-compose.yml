@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: avrora_db
+      POSTGRES_USER: avrora_user
+      POSTGRES_PASSWORD: avrora_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/dataw
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U avrora_user -d avrora_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  postgres_test:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: avrora_test
+      POSTGRES_USER: avrora_user
+      POSTGRES_PASSWORD: avrora_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U avrora_user -d avrora_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      DB_HOST: "postgres"
+      DB_PORT: "5432"
+      DB_NAME: "avrora_db"
+      DB_USER: "avrora_user"
+      DB_PASSWORD: "avrora_password"
+      JWT_SECRET: "super_secret_shhhhhh"
+      PASSWORD_PEPPER: "bmstu_my!<>_super_secret_pepper_here_32_chars_min"
+      CORS_ORIGIN: "http://localhost:3000"
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_data:

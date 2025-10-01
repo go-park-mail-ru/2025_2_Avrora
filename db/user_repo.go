@@ -19,7 +19,7 @@ func (ur *UserRepo) FindByEmail(email string) (*models.User, error) {
 	err := ur.db.QueryRow("SELECT id, email, password FROM users WHERE email = $1", email).
 		Scan(&user.ID, &user.Email, &user.Password)
 	if err != nil {
-		return nil, err	
+		return nil, err
 	}
 	return user, nil
 }

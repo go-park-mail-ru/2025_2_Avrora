@@ -15,10 +15,11 @@ func (r *Repo) Offer() *OfferRepo {
 	return &OfferRepo{db: r.GetDB()}
 }
 
+// FindByID возвращает предложение по ID
 func (or *OfferRepo) FindByID(id int) (*models.Offer, error) {
 	offer := &models.Offer{}
 	err := or.db.QueryRow(`
-		SELECT id, user_id, location_id, category_id, title, description, price, area, rooms, address, offer_type, created_at, updated_at
+		SELECT id, user_id, location_id, category_id, title, description, image, price, area, rooms, address, offer_type, created_at, updated_at
 		FROM offer
 		WHERE id = $1
 	`, id).Scan(
@@ -43,6 +44,7 @@ func (or *OfferRepo) FindByID(id int) (*models.Offer, error) {
 	return offer, nil
 }
 
+// FindAll возвращает все предложения с пагинацией
 func (or *OfferRepo) FindAll(page, limit int) ([]models.Offer, error) {
 	offset := (page - 1) * limit
 
@@ -85,6 +87,7 @@ func (or *OfferRepo) FindAll(page, limit int) ([]models.Offer, error) {
 	return offers, rows.Err()
 }
 
+// Create добавляет новое предложение
 func (or *OfferRepo) Create(offer *models.Offer) error {
 	offer.CreatedAt = time.Now()
 	offer.UpdatedAt = offer.CreatedAt
@@ -110,6 +113,7 @@ func (or *OfferRepo) Create(offer *models.Offer) error {
 	).Scan(&offer.ID)
 }
 
+// Update обновляет предложение
 func (or *OfferRepo) Update(offer *models.Offer) error {
 	offer.UpdatedAt = time.Now()
 
@@ -132,12 +136,14 @@ func (or *OfferRepo) Update(offer *models.Offer) error {
 	return err
 }
 
+// CountAll возвращает количество всех предложений
 func (or *OfferRepo) CountAll() (int, error) {
 	var total int
 	err := or.db.QueryRow("SELECT COUNT(*) FROM offer").Scan(&total)
 	return total, err
 }
 
+// ClearOfferTable очищает таблицу offer
 func (or *OfferRepo) ClearOfferTable() {
 	_, _ = or.db.Exec("DELETE FROM offer")
 }

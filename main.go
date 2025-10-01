@@ -2,25 +2,39 @@ package main
 
 import (
 	"fmt"
-	"log"
-	"net/http"
-	"os"
-
 	"github.com/go-park-mail-ru/2025_2_Avrora/db"
 	"github.com/go-park-mail-ru/2025_2_Avrora/handlers"
 	"github.com/go-park-mail-ru/2025_2_Avrora/middleware"
 	"github.com/go-park-mail-ru/2025_2_Avrora/utils"
+	"log"
+	"net/http"
+	"os"
 )
 
 func main() {
 	utils.LoadEnv()
 	port := os.Getenv("SERVER_PORT")
 	cors_origin := os.Getenv("CORS_ORIGIN")
-	dbUser := os.Getenv("DB_USER")
-	repo, err := db.New(fmt.Sprintf("postgres://%s@%s:%s/%s?sslmode=disable", dbUser, os.Getenv("DB_HOST"), os.Getenv("DB_PORT"), os.Getenv("DB_NAME")))
+
+	// Правильная строка подключения с паролем
+	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
+		os.Getenv("DB_USER"),
+		os.Getenv("DB_PASSWORD"), // Добавляем пароль
+		os.Getenv("DB_HOST"),
+		os.Getenv("DB_PORT"),
+		os.Getenv("DB_NAME"))
+
+	log.Printf("Подключение к БД: %s@%s:%s/%s",
+		os.Getenv("DB_USER"),
+		os.Getenv("DB_HOST"),
+		os.Getenv("DB_PORT"),
+		os.Getenv("DB_NAME"))
+
+	repo, err := db.New(connStr)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Ошибка подключения к БД:", err)
 	}
+
 	jwtGen := utils.NewJwtGenerator(os.Getenv("JWT_SECRET"))
 	pepper := os.Getenv("PASSWORD_PEPPER")
 	if pepper == "" {
@@ -54,6 +68,6 @@ func main() {
 
 	handlerWithCORS := middleware.CorsMiddleware(mux, cors_origin)
 
-	log.Printf("Starting server on port %s with DB user %s", port, dbUser)
+	log.Printf("Starting server on port %s", port)
 	log.Fatal(http.ListenAndServe(":"+port, handlerWithCORS))
 }

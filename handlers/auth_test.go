@@ -61,7 +61,7 @@ func TestRegisterHandler_DuplicateEmail(t *testing.T) {
 	utils.LoadEnv()
 	jwtGen := utils.NewJwtGenerator("test_secret_32_chars_min_for_tests")
 	passwordHasher, _ := utils.NewPasswordHasher(os.Getenv("PASSWORD_PEPPER"))
-	testRepo, _ := db.New(utils.GetTestPostgresDSN())
+	testRepo, _ := db.New(utils.GetPostgresDSN())
 	testRepo.ClearAllTables()
 	// Регистрируем первый раз
 	body := `{"email": "duplicate@example.com", "password": "secret123!В"}`
@@ -92,7 +92,7 @@ func TestRegisterHandler_DuplicateEmail(t *testing.T) {
 func TestLoginHandler_Success(t *testing.T) {
 	jwtGen := utils.NewJwtGenerator("test_secret_32_chars_min_for_tests")
 	utils.LoadEnv()
-	dsn := utils.GetTestPostgresDSN()
+	dsn := utils.GetPostgresDSN()
 	passwordHasher, _ := utils.NewPasswordHasher(os.Getenv("PASSWORD_PEPPER"))
 	testRepo, _ := db.New(dsn)
 	testRepo.ClearAllTables()
@@ -132,7 +132,7 @@ func TestLoginHandler_InvalidCredentials(t *testing.T) {
 	jwtGen := utils.NewJwtGenerator("test_secret_32_chars_min_for_tests")
 	utils.LoadEnv()
 	passwordHasher, _ := utils.NewPasswordHasher(os.Getenv("PASSWORD_PEPPER"))
-	dsn := utils.GetTestPostgresDSN()
+	dsn := utils.GetPostgresDSN()
 	testRepo, _ := db.New(dsn)
 	testRepo.ClearAllTables()
 	testRepo.User().ClearUserTable()
@@ -168,7 +168,7 @@ func TestLogoutHandler(t *testing.T) {
 	jwtGen := utils.NewJwtGenerator("test_secret_32_chars_min_for_tests")
 	utils.LoadEnv()
 	passwordHasher, _ := utils.NewPasswordHasher(os.Getenv("PASSWORD_PEPPER"))
-	dsn := utils.GetTestPostgresDSN()
+	dsn := utils.GetPostgresDSN()
 	testRepo, _ := db.New(dsn)
 	testRepo.ClearAllTables()
 	testRepo.User().ClearUserTable()
