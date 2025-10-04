@@ -1,22 +1,45 @@
-.PHONY: test up down
+.PHONY: test test-with-db
 
-# Поднять только тестовую БД
-up:
-	docker-compose up -d postgres_test
+DB_NAME := 2025_2_Avrora_test
+DB_USER := postgres
+DB_PASS := postgres
+DB_PORT := 5432
+MIGRATIONS_DIR := ./db/migrations
 
-# Прогон тестов (локально, используя тестовую БД на 5433)
-test: up
-	# ждём пока база прогрузится
-	sleep 5
-	# запускаем go test с нужным env
-	AVRORA_DB_HOST=localhost \
-	AVRORA_DB_PORT=5433 \
-	AVRORA_DB_NAME=avrora_test \
-	AVRORA_DB_USER=avrora_user 
-	AVRORA_DB_PASSWORD=avrora_password \
-		go test ./... -v
-	$(MAKE) down
+TEST_DB_URL := postgres://$(DB_USER):$(DB_PASS)@localhost:$(DB_PORT)/$(DB_NAME)?sslmode=disable
 
-# Остановить контейнеры
-down:
-	docker-compose down
+test: test-with-db
+
+test-with-db:
+	@echo "🚀 Starting PostgreSQL container..."
+	docker run -d \
+		--name test-postgres \
+		-e POSTGRES_DB=postgres \
+		-e POSTGRES_USER=$(DB_USER) \
+		-e POSTGRES_PASSWORD=$(DB_PASS) \
+		-p $(DB_PORT):5432 \
+		--health-cmd="pg_isready -U $(DB_USER)" \
+		--health-interval=1s \
+		--health-timeout=5s \
+		--health-retries=10 \
+		postgres:15
+
+	@echo "⏳ Waiting for DB to be ready..."
+	@until docker exec test-postgres pg_isready -U $(DB_USER); do sleep 1; done
+
+	@echo "🔧 Creating test database..."
+	docker exec test-postgres psql -U $(DB_USER) -c "CREATE DATABASE $(DB_NAME);"
+
+	@echo "⬆️ Applying .up.sql migrations from $(MIGRATIONS_DIR)..."
+	@for f in $$(find $(MIGRATIONS_DIR) -name "*.up.sql" | sort); do \
+		echo "Applying $$f..."; \
+		docker cp "$$f" test-postgres:/tmp/migration.up.sql; \
+		docker exec test-postgres psql -U $(DB_USER) -d $(DB_NAME) -f /tmp/migration.up.sql; \
+	done
+
+	@echo "🧪 Running Go tests..."
+	TEST_DB_URL="$(TEST_DB_URL)" go test -v ./...
+
+	@echo "🧹 Cleaning up..."
+	docker stop test-postgres > /dev/null 2>&1
+	docker rm test-postgres > /dev/null 2>&1

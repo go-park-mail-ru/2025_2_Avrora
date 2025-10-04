@@ -1,2 +1,0 @@
-ALTER TABLE offer
-    DROP CONSTRAINT IF EXISTS fk_offer_user;

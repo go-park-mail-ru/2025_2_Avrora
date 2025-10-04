@@ -6,8 +6,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"runtime"
-	"strings"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
@@ -37,23 +35,6 @@ func New(dataSourceName string) (*Repo, error) {
 	return &Repo{db: db}, nil
 }
 
-// buildMigrationPath формирует корректный file:// путь под текущую ОС
-func buildMigrationPath(path string) string {
-	abs, err := filepath.Abs(path)
-	if err != nil {
-		log.Fatalf("❌ Не удалось вычислить абсолютный путь для миграций: %v", err)
-	}
-
-	// Windows → заменяем слэши и добавляем "file:///"
-	if runtime.GOOS == "windows" {
-		abs = strings.ReplaceAll(abs, `\`, `/`)
-		return fmt.Sprintf("file:///%s", abs)
-	}
-
-	// Linux/Mac → обычный путь
-	return fmt.Sprintf("file://%s", abs)
-}
-
 func getMigrationsPath() string {
 	// Берём текущий рабочий каталог
 	wd, err := os.Getwd()
@@ -61,7 +42,6 @@ func getMigrationsPath() string {
 		log.Fatal(err)
 	}
 
-	// Ищем папку migrations в нескольких стандартных местах
 	candidates := []string{
 		filepath.Join(wd, "db", "migrations"),             // основной вариант
 		filepath.Join(wd, "..", "db", "migrations"),       // для тестов из /db
@@ -97,8 +77,6 @@ func applyMigrations(db *sql.DB) error {
 		return err
 	}
 
-	// ⚡ убрал defer m.Close()
-
 	err = m.Up()
 	if err != nil && err != migrate.ErrNoChange {
 		return err
@@ -130,8 +108,7 @@ func (r *Repo) MigrateDown(steps uint) error {
 	if err != nil {
 		return err
 	}
-
-	// ⚡ убрал defer m.Close()
+	
 	return m.Steps(-int(steps))
 }
 
