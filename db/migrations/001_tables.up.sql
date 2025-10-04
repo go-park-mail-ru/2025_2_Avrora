@@ -1,51 +1,102 @@
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+CREATE TYPE offer_type_enum AS ENUM ('sale', 'rent');
+CREATE TYPE offer_status_enum AS ENUM ('active', 'sold', 'archived');
+CREATE TYPE user_role_enum AS ENUM ('user', 'owner', 'realtor');
+
 CREATE TABLE users (
-    id SERIAL PRIMARY KEY,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    password TEXT NOT NULL
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    email TEXT NOT NULL UNIQUE CHECK (LENGTH(email) <= 255),
+    password_hash TEXT NOT NULL CHECK (LENGTH(password_hash) <= 255),
+    avatar_url TEXT CHECK (LENGTH(avatar_url) <= 1024),
+    role user_role_enum NOT NULL DEFAULT 'user',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE category (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    slug VARCHAR(100) UNIQUE NOT NULL,
-    description TEXT
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT NOT NULL CHECK (LENGTH(name) <= 100),
+    slug TEXT NOT NULL UNIQUE CHECK (LENGTH(slug) <= 100),
+    description TEXT CHECK (LENGTH(description) <= 1000),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE region (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    parent_id INT REFERENCES region(id) ON DELETE SET NULL,
-    level INT NOT NULL DEFAULT 0 CHECK (level >= 0),
-    slug VARCHAR(255) UNIQUE NOT NULL
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT NOT NULL CHECK (LENGTH(name) <= 255),
+    parent_id UUID REFERENCES region(id) ON DELETE SET NULL,
+    level INT NOT NULL CHECK (level >= 0),
+    slug TEXT NOT NULL UNIQUE CHECK (LENGTH(slug) <= 255),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE metro_station (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT NOT NULL CHECK (LENGTH(name) <= 100),
+    latitude DECIMAL(10,8) NOT NULL CHECK (latitude BETWEEN -90 AND 90),
+    longitude DECIMAL(11,8) NOT NULL CHECK (longitude BETWEEN -180 AND 180),
+    region_id UUID NOT NULL REFERENCES region(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE housing_complex (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT NOT NULL CHECK (LENGTH(name) <= 255),
+    description TEXT CHECK (LENGTH(description) <= 2000),
+    year_built INT CHECK (year_built BETWEEN 1800 AND 2100),
+    region_id UUID NOT NULL REFERENCES region(id) ON DELETE CASCADE,
+    latitude DECIMAL(10,8) CHECK (latitude BETWEEN -90 AND 90),
+    longitude DECIMAL(11,8) CHECK (longitude BETWEEN -180 AND 180),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE location (
-    id SERIAL PRIMARY KEY,
-    region_id INT NOT NULL REFERENCES region(id) ON DELETE CASCADE,
-    street VARCHAR(255) NOT NULL,
-    house_number VARCHAR(50) NOT NULL,
-    latitude DECIMAL(10, 8),
-    longitude DECIMAL(11, 8)
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    region_id UUID NOT NULL REFERENCES region(id) ON DELETE CASCADE,
+    housing_complex_id UUID REFERENCES housing_complex(id) ON DELETE SET NULL,
+    street TEXT NOT NULL CHECK (LENGTH(street) <= 255),
+    house_number TEXT NOT NULL CHECK (LENGTH(house_number) <= 50),
+    latitude DECIMAL(10,8) CHECK (latitude BETWEEN -90 AND 90),
+    longitude DECIMAL(11,8) CHECK (longitude BETWEEN -180 AND 180),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE offer (
-    id SERIAL PRIMARY KEY,
-    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    location_id INT NOT NULL REFERENCES location(id) ON DELETE CASCADE,
-    category_id INT NOT NULL REFERENCES category(id) ON DELETE CASCADE,
-    title VARCHAR(255) NOT NULL,
-    description TEXT,
-    price INT NOT NULL CHECK (price >= 0),
-    area DECIMAL(10, 2) CHECK (area > 0),  
-    rooms INT CHECK (rooms >= 0),
-    offer_type VARCHAR(20) NOT NULL DEFAULT 'sale' CHECK (offer_type IN ('sale', 'rent')),
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    location_id UUID NOT NULL REFERENCES location(id) ON DELETE CASCADE,
+    category_id UUID NOT NULL REFERENCES category(id) ON DELETE CASCADE,
+    title TEXT NOT NULL CHECK (LENGTH(title) <= 255),
+    description TEXT CHECK (LENGTH(description) <= 5000),
+    price BIGINT NOT NULL CHECK (price >= 0),
+    area DECIMAL(10,2) NOT NULL CHECK (area > 0),
+    rooms INT NOT NULL CHECK (rooms >= 0),
+    offer_type offer_type_enum NOT NULL,
+    status offer_status_enum NOT NULL DEFAULT 'active',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE photo (
-    id SERIAL PRIMARY KEY,
-    offer_id INT NOT NULL REFERENCES offer(id) ON DELETE CASCADE,
-    url TEXT NOT NULL,
-    position INT NOT NULL DEFAULT 0
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    offer_id UUID NOT NULL REFERENCES offer(id) ON DELETE CASCADE,
+    url TEXT NOT NULL CHECK (LENGTH(url) <= 1024),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE review (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    offer_id UUID NOT NULL REFERENCES offer(id) ON DELETE CASCADE,
+    rating INT CHECK (rating BETWEEN 1 AND 5),
+    comment TEXT CHECK (LENGTH(comment) <= 1000),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

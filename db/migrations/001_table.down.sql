@@ -1,6 +1,13 @@
+DROP TABLE IF EXISTS review;
 DROP TABLE IF EXISTS photo;
 DROP TABLE IF EXISTS offer;
 DROP TABLE IF EXISTS location;
+DROP TABLE IF EXISTS housing_complex;
+DROP TABLE IF EXISTS metro_station;
 DROP TABLE IF EXISTS region;
 DROP TABLE IF EXISTS category;
 DROP TABLE IF EXISTS users;
+
+DROP TYPE IF EXISTS offer_status_enum;
+DROP TYPE IF EXISTS offer_type_enum;
+DROP TYPE IF EXISTS user_role_enum;
