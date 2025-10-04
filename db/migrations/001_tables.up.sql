@@ -38,7 +38,6 @@ CREATE TABLE metro_station (
     name TEXT NOT NULL CHECK (LENGTH(name) <= 100),
     latitude DECIMAL(10,8) NOT NULL CHECK (latitude BETWEEN -90 AND 90),
     longitude DECIMAL(11,8) NOT NULL CHECK (longitude BETWEEN -180 AND 180),
-    region_id UUID NOT NULL REFERENCES region(id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -65,6 +64,13 @@ CREATE TABLE location (
     longitude DECIMAL(11,8) CHECK (longitude BETWEEN -180 AND 180),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE location_metro (
+    location_id UUID NOT NULL REFERENCES location(id) ON DELETE CASCADE,
+    metro_station_id UUID NOT NULL REFERENCES metro_station(id) ON DELETE CASCADE,
+    distance_meters INT NOT NULL CHECK (distance_meters >= 0),
+    PRIMARY KEY (location_id, metro_station_id)
 );
 
 CREATE TABLE offer (
