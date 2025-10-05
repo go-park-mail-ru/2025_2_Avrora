@@ -1,0 +1,112 @@
+package handlers
+
+import (
+	"encoding/json"
+	"errors"
+	"net/http"
+	"strconv"
+
+	"github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/response"
+	"github.com/go-park-mail-ru/2025_2_Avrora/internal/domain"
+	"github.com/go-park-mail-ru/2025_2_Avrora/internal/usecase"
+)
+
+func (o *offerHandler) GetOffersHandler(w http.ResponseWriter, r *http.Request) {
+	page, err := parseIntQueryParam(r, "page", 1)
+	if err != nil {
+		response.HandleError(w, err, http.StatusInternalServerError, "ошибка получения предложений")
+		return
+	}
+	limit, err := parseIntQueryParam(r, "limit", 10)
+	if err != nil {
+		response.HandleError(w, err, http.StatusInternalServerError, "ошибка получения предложений")
+		return
+	}
+	result, err := o.offerUsecase.List(page, limit)
+	if err != nil {
+		response.HandleError(w, err, http.StatusInternalServerError, "ошибка получения предложений")
+		return
+	}
+	response.WriteJSON(w, http.StatusOK, result)
+}
+
+func (o *offerHandler) CreateOfferHandler(w http.ResponseWriter, r *http.Request) {
+	var req usecase.CreateOfferRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.HandleError(w, err, http.StatusBadRequest, "ошибка создания предложения")
+		return
+	}
+
+	userID, ok := r.Context().Value("userID").(string)
+	if !ok || userID == "" {
+		response.HandleError(w, nil, http.StatusUnauthorized, "требуется авторизация")
+		return
+	}
+
+	userId, err := strconv.Atoi(userID)
+	if err != nil {
+		response.HandleError(w, err, http.StatusInternalServerError, "ошибка пользовательского характера")
+	}
+	offer := domain.Offer{
+		UserID:      userId,
+		Title:       req.Title,
+		Description: req.Description,
+		Image:       req.Image,
+		Price:       req.Price,
+		Area:        req.Area,
+		Rooms:       req.Rooms,
+		Address:     req.Address,
+		OfferType:   req.OfferType,
+	}
+
+	if err := o.offerUsecase.Create(offer); err != nil {
+		if errors.Is(err, usecase.ErrInvalidInput) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		} else {
+			http.Error(w, "failed to create offer", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(offer)
+}
+
+func (o *offerHandler) DeleteOfferHandler(w http.ResponseWriter, r *http.Request) {
+	req, err := parseIntQueryParam(r, "id", 0)
+	if err != nil {
+		response.HandleError(w, err, http.StatusInternalServerError, "ошибка получения параметра")
+		return
+	}
+	if err := o.offerUsecase.Delete(strconv.Itoa(req)); err != nil {
+		response.HandleError(w, err, http.StatusInternalServerError, "ошибка удаления предложения")
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+func (o *offerHandler) UpdateOfferHandler(w http.ResponseWriter, r *http.Request) {
+	var req usecase.UpdateOfferRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.HandleError(w, err, http.StatusBadRequest, "ошибка обработки входных данных")
+		return
+	}
+
+	offer := domain.Offer{
+		ID:          req.ID,
+		Title:       req.Title,
+		Description: req.Description,
+		Image:       req.Image,
+		Price:       req.Price,
+		Area:        req.Area,
+		Rooms:       req.Rooms,
+		Address:     req.Address,
+		OfferType:   req.OfferType,
+	}
+	if err := o.offerUsecase.Update(offer); err != nil {
+		response.HandleError(w, err, http.StatusInternalServerError, "ошибка обновления предложения")
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}

@@ -4,9 +4,6 @@ import (
 	"testing"
 )
 
-// -------------------
-// Тест создания PasswordHasher
-// -------------------
 func TestNewPasswordHasher(t *testing.T) {
 	ph, err := NewPasswordHasher("pepper123")
 	if err != nil {

@@ -1,4 +1,3 @@
-// utils/password.go
 package utils
 
 import (

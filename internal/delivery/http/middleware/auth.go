@@ -4,8 +4,8 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/go-park-mail-ru/2025_2_Avrora/response"
-	"github.com/go-park-mail-ru/2025_2_Avrora/utils"
+	"github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/response"
+	"github.com/go-park-mail-ru/2025_2_Avrora/internal/infrastructure/utils"
 )
 
 type contextKey string
@@ -40,7 +40,7 @@ func AuthMiddleware(jwtGen *utils.JwtGenerator) func(http.Handler) http.Handler 
 	}
 }
 
-func GetUserFromContext(ctx context.Context) (string, bool) {
+func GetUserIDFromContext(ctx context.Context) (string, bool) {
 	userID, ok := ctx.Value(UserContextKey).(string)
 	return userID, ok
 }

@@ -6,9 +6,6 @@ import (
 	"time"
 )
 
-// -------------------
-// Тест создания генератора
-// -------------------
 func TestNewJwtGenerator(t *testing.T) {
 	j := NewJwtGenerator("secret123")
 	if j == nil {

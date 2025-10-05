@@ -13,11 +13,11 @@ import (
 	_ "github.com/lib/pq"
 )
 
-type Repo struct {
+type Database struct {
 	db *sql.DB
 }
 
-func New(dataSourceName string) (*Repo, error) {
+func New(dataSourceName string) (*Database, error) {
 	db, err := sql.Open("postgres", dataSourceName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
@@ -32,20 +32,20 @@ func New(dataSourceName string) (*Repo, error) {
 	}
 
 	log.Println("Инициализация базы данных завершена")
-	return &Repo{db: db}, nil
+	return &Database{db: db}, nil
 }
 
 func getMigrationsPath() string {
-	// Берём текущий рабочий каталог
 	wd, err := os.Getwd()
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	candidates := []string{
-		filepath.Join(wd, "db", "migrations"),             // основной вариант
-		filepath.Join(wd, "..", "db", "migrations"),       // для тестов из /db
-		filepath.Join(wd, "..", "..", "db", "migrations"), // на случай глубокого запуска
+		filepath.Join(wd, "migrations"),
+		filepath.Join(wd, "db", "migrations"),            
+		filepath.Join(wd, "..", "db", "migrations"),     
+		filepath.Join(wd, "..", "..", "db", "migrations"),
 	}
 
 	for _, path := range candidates {
@@ -90,11 +90,11 @@ func applyMigrations(db *sql.DB) error {
 	return nil
 }
 
-func (r *Repo) GetDB() *sql.DB {
+func (r *Database) GetDB() *sql.DB {
 	return r.db
 }
 
-func (r *Repo) MigrateDown(steps uint) error {
+func (r *Database) MigrateDown(steps uint) error {
 	driver, err := postgres.WithInstance(r.db, &postgres.Config{})
 	if err != nil {
 		return err
@@ -110,13 +110,4 @@ func (r *Repo) MigrateDown(steps uint) error {
 	}
 	
 	return m.Steps(-int(steps))
-}
-
-func (r *Repo) ClearAllTables() error {
-	_, err := r.db.Exec(`
-		TRUNCATE TABLE offer, users
-		RESTART IDENTITY
-		CASCADE
-	`)
-	return err
 }
