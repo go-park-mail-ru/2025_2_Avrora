@@ -1,24 +1,21 @@
 package handlers
 
-import (
-	"net/http"
+import "github.com/go-park-mail-ru/2025_2_Avrora/internal/domain"
 
-	"github.com/go-park-mail-ru/2025_2_Avrora/internal/usecase"
-)
 
-type OfferHandler interface {
-	GetOffersHandler(w http.ResponseWriter, r *http.Request)
-	CreateOfferHandler(w http.ResponseWriter, r *http.Request)
-	UpdateOfferHandler(w http.ResponseWriter, r *http.Request)
-	DeleteOfferHandler(w http.ResponseWriter, r *http.Request)
+type IOfferUsecase interface {
+	List(page, limit int) ([]*domain.Offer, error)
+	GetByID(id string) (*domain.Offer, error)
+	Update(offer *domain.Offer) error
+	Create(offer *domain.Offer) error
+	Delete(id string) error
+	ListByUserID(userID string) ([]*domain.Offer, error)
 }
 
 type offerHandler struct {
-	offerUsecase usecase.OfferUsecase
+	offerUsecase IOfferUsecase
 }
 
-var _ OfferHandler = (*offerHandler)(nil)
-
-func NewOfferHandler(uc usecase.OfferUsecase) *offerHandler {
+func NewOfferHandler(uc IOfferUsecase) *offerHandler {
 	return &offerHandler{offerUsecase: uc}
 }

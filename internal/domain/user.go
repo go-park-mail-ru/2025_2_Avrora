@@ -9,12 +9,6 @@ type User struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-type UserRepository interface {
-	Create(user User) error
-	GetByID(id string) (User, error)
-	GetByEmail(email string) (User, error)
-}
-
 var (
 	ErrUserNotFound = Err("user not found")
 	ErrInvalidCredentials = Err("invalid email or password")

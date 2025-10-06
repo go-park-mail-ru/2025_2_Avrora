@@ -12,13 +12,11 @@ type OfferRepository struct {
 	db *sql.DB
 }
 
-var _ models.OfferRepository = (*OfferRepository)(nil)
-
 func NewOfferRepository(db *sql.DB) *OfferRepository {
 	return &OfferRepository{db: db}
 }
 
-func (r *OfferRepository) GetByID(id string) (models.Offer, error) {
+func (r *OfferRepository) GetByID(id string) (*models.Offer, error) {
 	offer := models.Offer{}
 	err := r.db.QueryRow(`
 		SELECT id, user_id, location_id, category_id, title, description, image, price, area, rooms, address, offer_type, created_at, updated_at
@@ -42,14 +40,14 @@ func (r *OfferRepository) GetByID(id string) (models.Offer, error) {
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return models.Offer{}, models.ErrOfferNotFound
+			return &models.Offer{}, models.ErrOfferNotFound
 		}
-		return models.Offer{}, err
+		return &models.Offer{}, err
 	}
-	return offer, nil
+	return &offer, nil
 }
 
-func (r *OfferRepository) List(page, limit int) ([]models.Offer, error) {
+func (r *OfferRepository) List(page, limit int) ([]*models.Offer, error) {
 	offset := (page - 1) * limit
 
 	rows, err := r.db.Query(`
@@ -63,7 +61,7 @@ func (r *OfferRepository) List(page, limit int) ([]models.Offer, error) {
 	}
 	defer rows.Close()
 
-	var offers []models.Offer
+	var offers []*models.Offer
 	for rows.Next() {
 		var o models.Offer
 		err := rows.Scan(
@@ -85,13 +83,13 @@ func (r *OfferRepository) List(page, limit int) ([]models.Offer, error) {
 		if err != nil {
 			return nil, err
 		}
-		offers = append(offers, o)
+		offers = append(offers, &o)
 	}
 
 	return offers, rows.Err()
 }
 
-func (r *OfferRepository) Create(offer models.Offer) error {
+func (r *OfferRepository) Create(offer *models.Offer) error {
 	now := time.Now()
 	offer.CreatedAt = now
 	offer.UpdatedAt = now
@@ -118,7 +116,7 @@ func (r *OfferRepository) Create(offer models.Offer) error {
 	).Scan(&offer.ID)
 }
 
-func (r *OfferRepository) Update(offer models.Offer) error {
+func (r *OfferRepository) Update(offer *models.Offer) error {
 	offer.UpdatedAt = time.Now()
 
 	_, err := r.db.Exec(`
@@ -151,7 +149,7 @@ func (r *OfferRepository) CountAll() (int, error) {
 	return total, err
 }
 
-func (r *OfferRepository) ListByUserID(userID string) ([]models.Offer, error) {
+func (r *OfferRepository) ListByUserID(userID string) ([]*models.Offer, error) {
 	rows, err := r.db.Query(`
 		SELECT id, user_id, location_id, category_id, title, description, image, price, area, rooms, address, offer_type, created_at, updated_at
 		FROM offer
@@ -163,7 +161,7 @@ func (r *OfferRepository) ListByUserID(userID string) ([]models.Offer, error) {
 	}
 	defer rows.Close()
 
-	var offers []models.Offer
+	var offers []*models.Offer
 	for rows.Next() {
 		var o models.Offer
 		err := rows.Scan(
@@ -185,7 +183,7 @@ func (r *OfferRepository) ListByUserID(userID string) ([]models.Offer, error) {
 		if err != nil {
 			return nil, err
 		}
-		offers = append(offers, o)
+		offers = append(offers, &o)
 	}
 
 	return offers, rows.Err()

@@ -7,8 +7,8 @@ import (
 
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/handlers"
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/middleware"
-	"github.com/go-park-mail-ru/2025_2_Avrora/internal/infrastructure/db"
-	"github.com/go-park-mail-ru/2025_2_Avrora/internal/infrastructure/utils"
+	"github.com/go-park-mail-ru/2025_2_Avrora/internal/db"
+	"github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/utils"
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/usecase"
 )
 
@@ -46,7 +46,7 @@ func main() {
 
 	mux.HandleFunc("/api/v1/logout", authHandler.Logout)
 
-	mux.HandleFunc("/api/v1/offers", offerHandler.GetOffersHandler)
+	mux.HandleFunc("/api/v1/offers", offerHandler.GetOffers)
 
 	mux.Handle("/api/v1/image/", http.StripPrefix("/api/v1/image/", http.FileServer(http.Dir("image/"))))
 

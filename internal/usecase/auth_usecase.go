@@ -1,29 +1,36 @@
 package usecase
 
 import (
-	"github.com/go-park-mail-ru/2025_2_Avrora/internal/infrastructure/db"
-	"github.com/go-park-mail-ru/2025_2_Avrora/internal/infrastructure/utils"
+	"github.com/go-park-mail-ru/2025_2_Avrora/internal/domain"
 )
 
-type AuthUsecase interface {
-	Register(email, password string) error
-	Login(email, password string) (string, error)
-	Logout() (string, error)
+type IUserRepository interface {
+	Create(user *domain.User) error
+	GetUserByEmail(email string) (*domain.User, error)
+	GetUserByID(id string) (*domain.User, error)
+}
+
+type IPasswordHasher interface {
+	Hash(password string) (string, error)
+	Compare(hash string, password string) bool
+}
+
+type IJWTGenerator interface {
+	GenerateJWT(id string) (string, error)
+	GenerateExpiredJWT() (string, error)
 }
 
 type authUsecase struct {
-	userRepo       *db.UserRepository
-	passwordHasher *utils.PasswordHasher
-	jwtService     *utils.JwtGenerator
+	userRepo       IUserRepository
+	passwordHasher IPasswordHasher
+	jwtService     IJWTGenerator
 }
 
-var _ AuthUsecase = (*authUsecase)(nil)
-
 func NewAuthUsecase(
-	userRepo *db.UserRepository,
-	hasher *utils.PasswordHasher,
-	jwt *utils.JwtGenerator,
-) AuthUsecase {
+	userRepo IUserRepository,
+	hasher IPasswordHasher,
+	jwt IJWTGenerator,
+) *authUsecase {
 	return &authUsecase{
 		userRepo:       userRepo,
 		passwordHasher: hasher,

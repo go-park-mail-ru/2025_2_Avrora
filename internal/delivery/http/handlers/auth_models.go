@@ -1,4 +1,6 @@
-package usecase
+package handlers
+
+import "errors"
 
 type RegisterRequest struct {
 	Email    string `json:"email"`
@@ -23,3 +25,8 @@ type LogoutResponse struct {
 	Message string `json:"message"`
 	Token   string `json:"token"`
 }
+
+var (
+	ErrInvalidEmail = errors.New("неправильный формат почты")
+	ErrInvalidJSON  = errors.New("неправильный формат JSON")
+)

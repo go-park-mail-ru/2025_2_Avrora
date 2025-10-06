@@ -8,18 +8,14 @@ import (
 )
 
 var (
-	ErrUserAlreadyExists   = errors.New("user with this email already exists")
-	ErrInvalidCredentials  = errors.New("invalid email or password")
-	ErrInvalidInput        = errors.New("invalid input")
+	ErrUserAlreadyExists   = errors.New("Пользователь с таким email уже существует")
+	ErrInvalidCredentials  = errors.New("Неправильные email или пароль")
+	ErrInvalidInput        = errors.New("Невалидные данные")
+	ErrServerSideError     = errors.New("Серверная ошибка")
 )
 
 func (uc *authUsecase) Register(email, password string) error {
-	err := validateRegisterRequest(&RegisterRequest{Email: email, Password: password})
-	if err != nil {
-		return err
-	}
-
-	_, err = uc.userRepo.GetByEmail(email)
+	_, err := uc.userRepo.GetUserByEmail(email)
 	if err == nil {
 		return ErrUserAlreadyExists
 	}
@@ -37,16 +33,11 @@ func (uc *authUsecase) Register(email, password string) error {
 		Password:  hashed,
 	}
 
-	return uc.userRepo.Create(user)
+	return uc.userRepo.Create(&user)
 }
 
 func (uc *authUsecase) Login(email, password string) (string, error) {
-	err := validateLoginRequest(&LoginRequest{Email: email, Password: password})
-	if err != nil {
-		return "", err
-	}
-
-	user, err := uc.userRepo.GetByEmail(email)
+	user, err := uc.userRepo.GetUserByEmail(email)
 	if err != nil {
 		if errors.Is(err, domain.ErrUserNotFound) {
 			return "", ErrInvalidCredentials

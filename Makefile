@@ -4,7 +4,7 @@ DB_NAME := 2025_2_Avrora_test
 DB_USER := postgres
 DB_PASS := postgres
 DB_PORT := 5432
-MIGRATIONS_DIR := ./db/migrations
+MIGRATIONS_DIR := ./infrastructure/db/migrations
 
 TEST_DB_URL := postgres://$(DB_USER):$(DB_PASS)@localhost:$(DB_PORT)/$(DB_NAME)?sslmode=disable
 
@@ -30,12 +30,8 @@ test-with-db:
 	@echo "🔧 Creating test database..."
 	docker exec test-postgres psql -U $(DB_USER) -c "CREATE DATABASE $(DB_NAME);"
 
-	@echo "⬆️ Applying .up.sql migrations from $(MIGRATIONS_DIR)..."
-	@for f in $$(find $(MIGRATIONS_DIR) -name "*.up.sql" | sort); do \
-		echo "Applying $$f..."; \
-		docker cp "$$f" test-postgres:/tmp/migration.up.sql; \
-		docker exec test-postgres psql -U $(DB_USER) -d $(DB_NAME) -f /tmp/migration.up.sql; \
-	done
+	@echo "⬆️ Applying migrations using migrate CLI..."
+	migrate -database "$(TEST_DB_URL)" -path "$(MIGRATIONS_DIR)" up
 
 	@echo "🧪 Running Go tests..."
 	TEST_DB_URL="$(TEST_DB_URL)" go test -v ./...

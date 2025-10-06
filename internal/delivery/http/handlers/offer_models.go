@@ -1,4 +1,4 @@
-package usecase
+package handlers
 
 type CreateOfferRequest struct {
 	UserID      int     `json:"user_id"`

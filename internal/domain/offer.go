@@ -22,15 +22,6 @@ type Offer struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
-type OfferRepository interface {
-	Create(offer Offer) error
-	Update(offer Offer) error
-	GetByID(id string) (Offer, error)
-	List(page, limit int) ([]Offer, error)
-	ListByUserID(userID string) ([]Offer, error)
-	CountAll() (int, error)
-}
-
 var (
 	ErrInvalidInput = errors.New("invalid input")
 	ErrOfferNotFound = errors.New("offer not found")

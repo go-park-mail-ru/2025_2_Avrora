@@ -10,33 +10,43 @@ import (
 )
 
 func (h *authHandler) Register(w http.ResponseWriter, r *http.Request) {
-	var req usecase.RegisterRequest
+	var req RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		response.HandleError(w, err, http.StatusBadRequest, "invalid JSON")
+	}
+	
+	if err := validateRegisterRequest(&req); err != nil {
+		response.HandleError(w, err, http.StatusBadRequest, err.Error())
+		return
 	}
 
 	if err := h.authUsecase.Register(req.Email, req.Password); err != nil {
 		switch {
 		case errors.Is(err, usecase.ErrUserAlreadyExists):
-			response.HandleError(w, err, http.StatusConflict, "user already exists")
+			response.HandleError(w, err, http.StatusConflict, usecase.ErrUserAlreadyExists.Error())
 		case errors.Is(err, usecase.ErrInvalidInput):
-			response.HandleError(w, err, http.StatusBadRequest, "invalid input")
+			response.HandleError(w, err, http.StatusBadRequest, usecase.ErrInvalidInput.Error())
 		default:
-			response.HandleError(w, err, http.StatusInternalServerError, "server side error")
+			response.HandleError(w, err, http.StatusInternalServerError, usecase.ErrServerSideError.Error())
 		}
 		return
 	}
 
 	
-	response.WriteJSON(w, http.StatusCreated, usecase.RegisterResponse{
+	response.WriteJSON(w, http.StatusCreated, RegisterResponse{
 		Email: req.Email,
 	})
 }
 
 func (h *authHandler) Login(w http.ResponseWriter, r *http.Request) {
-	var req usecase.LoginRequest
+	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.HandleError(w, err, http.StatusBadRequest, "invalid JSON")
+		response.HandleError(w, ErrInvalidJSON, http.StatusBadRequest, ErrInvalidJSON.Error())
+	}
+
+	if err := validateLoginRequest(&req); err != nil {
+		response.HandleError(w, err, http.StatusBadRequest, err.Error())
+		return
 	}
 
 	token, err := h.authUsecase.Login(req.Email, req.Password)
@@ -52,7 +62,7 @@ func (h *authHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response.WriteJSON(w, http.StatusOK, usecase.AuthResponse{
+	response.WriteJSON(w, http.StatusOK, AuthResponse{
 		Email: req.Email,
 		Token: token,
 	})
@@ -64,7 +74,7 @@ func (h *authHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		response.HandleError(w, err, http.StatusInternalServerError, "ошибка генерации jwt")
 	}
 
-	response.WriteJSON(w, http.StatusOK, usecase.LogoutResponse{
+	response.WriteJSON(w, http.StatusOK, LogoutResponse{
 		Message: "success",
 		Token:   expiredToken,
 	})

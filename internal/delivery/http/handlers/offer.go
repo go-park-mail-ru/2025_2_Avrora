@@ -11,7 +11,7 @@ import (
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/usecase"
 )
 
-func (o *offerHandler) GetOffersHandler(w http.ResponseWriter, r *http.Request) {
+func (o *offerHandler) GetOffers(w http.ResponseWriter, r *http.Request) {
 	page, err := parseIntQueryParam(r, "page", 1)
 	if err != nil {
 		response.HandleError(w, err, http.StatusInternalServerError, "ошибка получения предложений")
@@ -30,8 +30,8 @@ func (o *offerHandler) GetOffersHandler(w http.ResponseWriter, r *http.Request) 
 	response.WriteJSON(w, http.StatusOK, result)
 }
 
-func (o *offerHandler) CreateOfferHandler(w http.ResponseWriter, r *http.Request) {
-	var req usecase.CreateOfferRequest
+func (o *offerHandler) CreateOffer(w http.ResponseWriter, r *http.Request) {
+	var req CreateOfferRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		response.HandleError(w, err, http.StatusBadRequest, "ошибка создания предложения")
 		return
@@ -59,7 +59,7 @@ func (o *offerHandler) CreateOfferHandler(w http.ResponseWriter, r *http.Request
 		OfferType:   req.OfferType,
 	}
 
-	if err := o.offerUsecase.Create(offer); err != nil {
+	if err := o.offerUsecase.Create(&offer); err != nil {
 		if errors.Is(err, usecase.ErrInvalidInput) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		} else {
@@ -73,7 +73,7 @@ func (o *offerHandler) CreateOfferHandler(w http.ResponseWriter, r *http.Request
 	json.NewEncoder(w).Encode(offer)
 }
 
-func (o *offerHandler) DeleteOfferHandler(w http.ResponseWriter, r *http.Request) {
+func (o *offerHandler) DeleteOffer(w http.ResponseWriter, r *http.Request) {
 	req, err := parseIntQueryParam(r, "id", 0)
 	if err != nil {
 		response.HandleError(w, err, http.StatusInternalServerError, "ошибка получения параметра")
@@ -86,8 +86,8 @@ func (o *offerHandler) DeleteOfferHandler(w http.ResponseWriter, r *http.Request
 	w.WriteHeader(http.StatusOK)
 }
 
-func (o *offerHandler) UpdateOfferHandler(w http.ResponseWriter, r *http.Request) {
-	var req usecase.UpdateOfferRequest
+func (o *offerHandler) UpdateOffer(w http.ResponseWriter, r *http.Request) {
+	var req UpdateOfferRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		response.HandleError(w, err, http.StatusBadRequest, "ошибка обработки входных данных")
 		return
@@ -104,7 +104,7 @@ func (o *offerHandler) UpdateOfferHandler(w http.ResponseWriter, r *http.Request
 		Address:     req.Address,
 		OfferType:   req.OfferType,
 	}
-	if err := o.offerUsecase.Update(offer); err != nil {
+	if err := o.offerUsecase.Update(&offer); err != nil {
 		response.HandleError(w, err, http.StatusInternalServerError, "ошибка обновления предложения")
 		return
 	}

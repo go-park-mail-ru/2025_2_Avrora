@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/response"
-	"github.com/go-park-mail-ru/2025_2_Avrora/internal/infrastructure/utils"
+	"github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/utils"
 )
 
 type contextKey string
