@@ -1,3 +1,7 @@
 .env
 cover.out
+coverage.out
+coverage
 cover.html
+.idea/
+test.ps1
