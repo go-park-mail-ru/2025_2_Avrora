@@ -6,11 +6,10 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"unicode"
 )
 
 func validateEmail(email string) bool {
-	re := regexp.MustCompile(`^[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.[\p{L}]{2,}$`)
+	re := regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
 	return re.MatchString(email)
 }
 
@@ -23,11 +22,11 @@ func validatePassword(password string) bool {
 
 	for _, char := range password {
 		switch {
-		case unicode.IsUpper(char):
+		case 'A' <= char && char <= 'Z':
 			hasUpper = true
-		case unicode.IsLower(char):
+		case 'a' <= char && char <= 'z':
 			hasLower = true
-		case unicode.IsDigit(char):
+		case '0' <= char && char <= '9':
 			hasDigit = true
 		}
 	}

@@ -20,7 +20,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	hasher, err := utils.NewPasswordHasher(os.Getenv("PASSWORD_PEPPER"))
+	hasher, err := utils.NewPasswordHasher("some")
 	if err != nil {
 		log.Fatal(err)
 	}

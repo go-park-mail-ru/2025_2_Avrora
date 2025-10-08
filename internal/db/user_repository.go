@@ -34,8 +34,7 @@ func (r *UserRepository) Create(user *domain.User) error {
 	user.CreatedAt = now
 
 	err := r.db.QueryRow(
-		"INSERT INTO users (id, email, password, created_at) VALUES ($1, $2, $3, $4) RETURNING id",
-		user.ID,
+		"INSERT INTO users (email, password, created_at) VALUES ($1, $2, $3) RETURNING id",
 		user.Email,
 		user.Password,
 		user.CreatedAt,

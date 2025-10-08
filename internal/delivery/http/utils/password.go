@@ -33,7 +33,7 @@ func (ph *PasswordHasher) Hash(password string) (string, error) {
 	return string(hash), nil
 }
 
-func (ph *PasswordHasher) Compare(password, hash string) bool {
+func (ph *PasswordHasher) Compare(hash, password string) bool {
 	pepperedPassword := password + ph.pepper
 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(pepperedPassword))
 	return err == nil

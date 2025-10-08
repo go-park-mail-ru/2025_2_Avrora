@@ -1,0 +1,26 @@
+run:
+  timeout: 5m # Timeout for the entire run
+  skip-dirs:
+    - vendor # Skip the vendor directory
+
+linters:
+  enable:
+    - errcheck       # Checks for unhandled errors
+    - goconst        # Detects repeated strings
+    - gocyclo        # Reports high cyclomatic complexity
+    - gofmt          # Checks if code is formatted with gofmt
+    - goimports      # Checks missing or unused imports
+    - ineffassign    # Detects ineffectual assignments
+    - staticcheck    # Performs advanced static analysis
+    - unused         # Finds unused variables and constants
+
+  disable:
+    - maligned       # Disable specific linters if needed
+
+issues:
+  exclude-use-default: false # Do not use default exclusions
+  max-per-linter: 0          # No limit on issues per linter
+  max-same-issues: 0         # No limit on duplicate issues
+
+output:
+  format: colored-line-number # Output format

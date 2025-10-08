@@ -12,7 +12,7 @@ type IUserRepository interface {
 
 type IPasswordHasher interface {
 	Hash(password string) (string, error)
-	Compare(hash string, password string) bool
+	Compare(hash,password string) bool
 }
 
 type IJWTGenerator interface {
