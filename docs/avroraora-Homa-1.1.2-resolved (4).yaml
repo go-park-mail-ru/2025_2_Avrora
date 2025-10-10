@@ -1,0 +1,797 @@
+openapi: 3.0.3
+info:
+  title: Homa API
+  description: "API для регистрации, авторизации и работы с офферами недвижимости"
+  version: 1.1.2
+servers:
+- url: https://virtserver.swaggerhub.com/avroraora/Homa/1.1.2
+  description: SwaggerHub API Auto Mocking
+- url: http://localhost:8080/api/v1
+paths:
+  /register:
+    post:
+      tags:
+      - Auth
+      summary: Регистрация пользователя
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/register_body"
+        required: true
+      responses:
+        "201":
+          description: Успешная регистрация
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/inline_response_201"
+        "400":
+          description: Неверный запрос
+        "409":
+          description: Пользователь уже существует
+        "500":
+          description: Внутренняя ошибка сервера
+  /login:
+    post:
+      tags:
+      - Auth
+      summary: Авторизация пользователя
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/login_body"
+        required: true
+      responses:
+        "200":
+          description: Успешная авторизация
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/inline_response_200"
+        "400":
+          description: Неверный запрос
+        "401":
+          description: Неверный email или пароль
+        "500":
+          description: Внутренняя ошибка сервера
+  /logout:
+    post:
+      tags:
+      - Auth
+      summary: Разлогиниться (инвалидировать токен)
+      responses:
+        "200":
+          description: Успешный выход из системы
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/inline_response_200_1"
+        "401":
+          description: Неавторизован
+        "500":
+          description: Внутренняя ошибка сервера
+      security:
+      - bearerAuth: []
+  /offers:
+    get:
+      tags:
+      - Offers
+      summary: Получить список офферов недвижимости
+      responses:
+        "200":
+          description: Список офферов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/inline_response_200_2"
+        "401":
+          description: Неавторизован
+        "500":
+          description: Внутренняя ошибка сервера
+      security:
+      - bearerAuth: []
+  /offers/{offer_id}:
+    get:
+      tags:
+      - Offers
+      summary: Получить конкретное объявление
+      parameters:
+      - name: offer_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        "200":
+          description: Данные объявления
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/inline_response_200_3"
+        "401":
+          description: Неавторизован
+        "403":
+          description: Доступ запрещен (это чужое объявление)
+        "404":
+          description: Объявление не найдено
+      security:
+      - bearerAuth: []
+    put:
+      tags:
+      - Offers
+      summary: Изменить объявление
+      parameters:
+      - name: offer_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/offers_offer_id_body"
+        required: true
+      responses:
+        "200":
+          description: Объявление успешно обновлено
+        "400":
+          description: Некорректные данные
+        "401":
+          description: Неавторизован
+        "403":
+          description: Доступ запрещен
+        "404":
+          description: Объявление не найдено
+        "500":
+          description: Внутренняя ошибка сервера
+      security:
+      - bearerAuth: []
+    delete:
+      tags:
+      - Offers
+      summary: Удалить объявление
+      parameters:
+      - name: offer_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        "200":
+          description: Объявление успешно удалено
+        "401":
+          description: Неавторизован
+        "403":
+          description: Доступ запрещен (это чужое объявление)
+        "404":
+          description: Объявление не найдено
+        "500":
+          description: Внутренняя ошибка сервера
+      security:
+      - bearerAuth: []
+  /image/{filename}:
+    get:
+      tags:
+      - Media
+      summary: Получить изображение
+      parameters:
+      - name: filename
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Успешно (возвращает файл)
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Файл не найден
+        "500":
+          description: Внутренняя ошибка сервера
+  /profile/dashboard:
+    get:
+      tags:
+      - Offers
+      summary: Просмотр моих объявлений (с фильтрацией)
+      parameters:
+      - name: property_type
+        in: query
+        description: Фильтр по типу недвижимости
+        required: false
+        schema:
+          type: string
+          enum:
+          - Квартира
+          - Дом
+      - name: offer_type
+        in: query
+        description: Фильтр по типу объявления
+        required: false
+        schema:
+          type: string
+          enum:
+          - Продажа
+          - Аренда
+      - name: category
+        in: query
+        description: Фильтр по категории недвижимости
+        required: false
+        schema:
+          type: string
+          enum:
+          - Новостройка
+          - Вторичка
+      responses:
+        "200":
+          description: Список объявлений текущего пользователя
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/inline_response_200_4"
+        "401":
+          description: Неавторизован
+        "500":
+          description: Внутренняя ошибка сервера
+      security:
+      - bearerAuth: []
+  /profile/info:
+    get:
+      tags:
+      - Profile
+      summary: Получить информацию о профиле пользователя
+      responses:
+        "200":
+          description: Информация о пользователе
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/inline_response_200_5"
+        "401":
+          description: Неавторизован
+        "500":
+          description: Внутренняя ошибка сервера
+      security:
+      - bearerAuth: []
+    put:
+      tags:
+      - Profile
+      summary: Обновить информацию профиля
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/profile_info_body"
+        required: true
+      responses:
+        "200":
+          description: Профиль успешно обновлен
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/inline_response_200_6"
+        "400":
+          description: Некорректные данные
+        "401":
+          description: Неавторизован
+        "500":
+          description: Внутренняя ошибка сервера
+      security:
+      - bearerAuth: []
+  /profile/security:
+    put:
+      tags:
+      - Profile
+      summary: Изменить пароль пользователя
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/profile_security_body"
+        required: true
+      responses:
+        "200":
+          description: Пароль успешно изменен
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/inline_response_200_7"
+        "400":
+          description: "Ошибка валидации (например, новый пароль не совпадает с подтверждением)"
+        "401":
+          description: Неавторизован или неверный текущий пароль
+        "500":
+          description: Внутренняя ошибка сервера
+      security:
+      - bearerAuth: []
+  /profile/myoffers:
+    get:
+      tags:
+      - Profile
+      summary: Получить список моих объявлений
+      responses:
+        "200":
+          description: Список объявлений текущего пользователя
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/inline_response_200_8"
+        "401":
+          description: Неавторизован
+        "500":
+          description: Внутренняя ошибка сервера
+      security:
+      - bearerAuth: []
+  /offers/create:
+    post:
+      tags:
+      - Offers
+      summary: Создать новое объявление
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/offers_create_body"
+        required: true
+      responses:
+        "201":
+          description: Объявление успешно создано
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/inline_response_201_1"
+        "400":
+          description: Неверный запрос
+        "401":
+          description: Неавторизован
+        "403":
+          description: "Профиль не заполнен! Заполните профиль, прежде чем создать объявление!"
+        "500":
+          description: Внутренняя ошибка сервера
+      security:
+      - bearerAuth: []
+components:
+  schemas:
+    register_body:
+      required:
+      - email
+      - password
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        password:
+          minLength: 1
+          type: string
+          format: password
+          example: secret123
+    inline_response_200_5:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        first_name:
+          type: string
+          example: Иван
+        last_name:
+          type: string
+          example: Иванов
+        email:
+          type: string
+          format: email
+          example: ivan@example.com
+        phone:
+          pattern: "^\\+?\\d{10,15}$"
+          type: string
+          example: "+79261234567"
+        photo_url:
+          type: string
+          format: uri
+          example: https://example.com/photos/1.jpg
+    inline_response_200_6:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Профиль обновлен
+        profile:
+          $ref: "#/components/schemas/inline_response_200_6_profile"
+    inline_response_200_7:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Пароль успешно обновлен
+    offers_offer_id_body:
+      type: object
+      properties:
+        title:
+          type: string
+        offer_type:
+          type: string
+          enum:
+          - Продажа
+          - Аренда
+        property_type:
+          type: string
+          enum:
+          - Квартира
+          - Дом
+        category:
+          type: string
+          enum:
+          - Новостройка
+          - Вторичка
+        address:
+          type: string
+        price:
+          type: number
+        rooms:
+          type: integer
+        area:
+          type: number
+        description:
+          type: string
+    inline_response_200_8:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 123
+        title:
+          type: string
+          example: Продается квартира в центре
+        offer_type:
+          type: string
+          example: Продажа
+          enum:
+          - Продажа
+          - Аренда
+        property_type:
+          type: string
+          example: Квартира
+          enum:
+          - Квартира
+          - Дом
+        category:
+          type: string
+          example: Вторичка
+          enum:
+          - Новостройка
+          - Вторичка
+        address:
+          type: string
+          example: "ул. Ленина, д. 10"
+        price:
+          type: number
+          example: 5000000
+        created_at:
+          type: string
+          format: date-time
+          example: 2025-10-10T01:00:00Z
+        updated_at:
+          type: string
+          format: date-time
+          example: 2025-10-10T02:00:00Z
+    offers_create_body:
+      required:
+      - address
+      - category
+      - floor
+      - in_complex
+      - kitchen_area
+      - living_area
+      - offer_type
+      - price
+      - property_type
+      - rooms
+      - total_area
+      - total_floors
+      type: object
+      properties:
+        offer_type:
+          type: string
+          enum:
+          - Продажа
+          - Аренда
+        property_type:
+          type: string
+          enum:
+          - Новостройка
+          - Вторичка
+        category:
+          type: string
+          enum:
+          - Квартира
+          - Дом
+        address:
+          type: string
+        floor:
+          type: integer
+        total_floors:
+          type: integer
+        in_complex:
+          type: boolean
+        complex_name:
+          type: string
+        rooms:
+          type: string
+          description: "Студия, 1, 2, 3, 4+"
+        total_area:
+          type: number
+          format: float
+        living_area:
+          type: number
+          format: float
+        kitchen_area:
+          type: number
+          format: float
+        price:
+          type: number
+        deposit:
+          type: number
+        commission:
+          type: number
+        prepayment:
+          type: number
+        rental_period:
+          type: string
+          description: Срок аренды (только для Аренда)
+    inline_response_200_6_profile:
+      type: object
+      properties:
+        id:
+          type: integer
+        first_name:
+          type: string
+        last_name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        photo_url:
+          type: string
+          format: uri
+    profile_info_body:
+      type: object
+      properties:
+        first_name:
+          type: string
+          example: Иван
+        last_name:
+          type: string
+          example: Иванов
+        email:
+          type: string
+          format: email
+          example: ivan@example.com
+        phone:
+          pattern: "^\\+?\\d{10,15}$"
+          type: string
+          example: "+79261234567"
+        photo:
+          type: string
+          format: binary
+    inline_response_201_user:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        email:
+          type: string
+          example: user@example.com
+    login_body:
+      required:
+      - email
+      - password
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        password:
+          minLength: 6
+          pattern: "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{6,}$"
+          type: string
+          format: password
+          example: VictoriyaSecret123
+    inline_response_201:
+      type: object
+      properties:
+        token:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        user:
+          $ref: "#/components/schemas/inline_response_201_user"
+    inline_response_200_1:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Вы успешно вышли из системы
+    inline_response_200:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          $ref: "#/components/schemas/inline_response_200_user"
+    inline_response_200_2:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        location_id:
+          type: integer
+        category_id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        price:
+          type: integer
+        area:
+          type: integer
+        rooms:
+          type: integer
+        address:
+          type: string
+        offer_type:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    inline_response_201_1:
+      type: object
+      properties:
+        id:
+          type: integer
+        offer_type:
+          type: string
+        property_type:
+          type: string
+        category:
+          type: string
+        address:
+          type: string
+        floor:
+          type: integer
+        total_floors:
+          type: integer
+        in_complex:
+          type: boolean
+        complex_name:
+          type: string
+        rooms:
+          type: string
+        total_area:
+          type: number
+        living_area:
+          type: number
+        kitchen_area:
+          type: number
+        price:
+          type: number
+        deposit:
+          type: number
+        commission:
+          type: number
+        prepayment:
+          type: number
+        rental_period:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    inline_response_200_3:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        offer_type:
+          type: string
+        property_type:
+          type: string
+        category:
+          type: string
+        address:
+          type: string
+        price:
+          type: number
+        rooms:
+          type: integer
+        area:
+          type: number
+        description:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    inline_response_200_user:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+    inline_response_200_4:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        offer_type:
+          type: string
+        property_type:
+          type: string
+        category:
+          type: string
+        address:
+          type: string
+        price:
+          type: number
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    profile_security_body:
+      required:
+      - confirm_new_password
+      - new_password
+      - old_password
+      type: object
+      properties:
+        old_password:
+          type: string
+          description: Текущий пароль пользователя
+          format: password
+          example: OldSecret123
+        new_password:
+          minLength: 6
+          type: string
+          description: Новый пароль
+          format: password
+          example: NewSecret456
+        confirm_new_password:
+          minLength: 6
+          type: string
+          description: Подтверждение нового пароля
+          format: password
+          example: NewSecret456
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
