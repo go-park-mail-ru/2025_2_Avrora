@@ -1,26 +1,95 @@
+version: "2"
+
 run:
-  timeout: 5m # Timeout for the entire run
-  skip-dirs:
-    - vendor # Skip the vendor directory
+  timeout: 5m
+  go: '1.25'  # match your Go version
 
 linters:
+  default: none
   enable:
-    - errcheck       # Checks for unhandled errors
-    - goconst        # Detects repeated strings
-    - gocyclo        # Reports high cyclomatic complexity
-    - gofmt          # Checks if code is formatted with gofmt
-    - goimports      # Checks missing or unused imports
-    - ineffassign    # Detects ineffectual assignments
-    - staticcheck    # Performs advanced static analysis
-    - unused         # Finds unused variables and constants
+    # 🔒 Correctness & Safety
+    - errcheck          # unchecked errors
+    - errorlint         # Go 1.13+ error wrapping issues
+    - nilerr            # returns nil after checking err != nil
+    - nilnesserr        # returns wrong nil error
+    - wrapcheck         # ensures external errors are wrapped
+    - contextcheck      # detects missing context propagation
+    - noctx             # finds HTTP/client calls without context
+    - rowserrcheck      # checks sql.Rows.Err
+    - sqlclosecheck     # ensures DB resources are closed
+    - bodyclose         # ensures HTTP response bodies are closed
 
-  disable:
-    - maligned       # Disable specific linters if needed
+    # 🛡️ Security
+    - gosec             # common security issues (e.g., weak crypto)
+
+    # 🧠 Code Quality
+    - staticcheck       # (includes gosimple + stylecheck) — powerful static analysis
+    - unused            # unused code (replaces deadcode/varcheck/structcheck)
+    - ineffassign       # useless assignments
+    - unconvert         # unnecessary type conversions
+    - makezero          # non-zero-length slices that should be zero
+    - musttag           # enforces JSON/YAML tags on marshaled structs
+    - revive            # modern, configurable style checker (replaces golint)
+
+    # 📦 Architecture & Imports
+    - depguard          # enforces allowed dependencies (you already use this)
+    - importas          # consistent import aliases
+
+    # 🧪 Testing
+    - paralleltest      # missing t.Parallel()
+    - testifylint       # correct usage of testify
+
+    # ✍️ Style & Readability
+    - misspell          # typo checker (comments/strings)
+    - whitespace        # removes stray newlines
+    - copyloopvar       # detects unsafe loop variable captures (Go 1.22+)
+
+formatters:
+  # Only enable if you plan to run `golangci-lint fmt`
+  # Otherwise, omit this section
+  enable:
+    - gofmt
+
+linters-settings:
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+
+  gosec:
+    excludes:
+      - G404  # weak RNG (ok for non-crypto uses)
+
+  depguard:
+    rules:
+      main:
+        allow:
+          - $gostd
+          - github.com/golang-jwt/jwt/v5
+          - github.com/golang-migrate/migrate/v4
+          - github.com/go-park-mail-ru/2025_2_Avrora/internal/...
+          - go.uber.org/zap
+          - github.com/jackc/pgx/v5
+          - github.com/jackc/pgx/v5/stdlib
+          - github.com/google/uuid
+          - golang.org/x/crypto/bcrypt
+
+  revive:
+    # Minimal style rules; you can expand if needed
+    rules:
+      - name: var-naming
+
+  wrapcheck:
+    # Ignore common stdlib-like interfaces if needed
+    ignore-interface-regexps:
+      - '^(?i)c(?-i)ach(ing|e)'
 
 issues:
-  exclude-use-default: false # Do not use default exclusions
-  max-per-linter: 0          # No limit on issues per linter
-  max-same-issues: 0         # No limit on duplicate issues
+  max-same-issues: 0
+  max-per-linter: 0
+  uniq-by-line: true
 
 output:
-  format: colored-line-number # Output format
+  formats:
+    text:
+      path: stdout
+      colors: true
