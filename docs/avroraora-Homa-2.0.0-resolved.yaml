@@ -1,0 +1,1080 @@
+openapi: 3.0.3
+info:
+  title: Homa API
+  description: "API для регистрации, авторизации и работы с офферами недвижимости"
+  version: 2.0.0
+servers:
+- url: https://virtserver.swaggerhub.com/avroraora/Homa/2.0.0
+  description: SwaggerHub API Auto Mocking
+- url: http://37.139.40.252:8000
+  description: Production server (виртуалка)
+- url: http://localhost:8080/api/v1
+  description: Avrora backend API base url
+paths:
+  /register:
+    post:
+      tags:
+      - Auth
+      summary: Регистрация пользователя
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/register_body"
+        required: true
+      responses:
+        "201":
+          description: Успешная регистрация
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/inline_response_201_successfull_auth"
+        "400":
+          description: Неверный запрос
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Пользователь уже существует
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /login:
+    post:
+      tags:
+      - Auth
+      summary: Авторизация пользователя
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/login_body"
+        required: true
+      responses:
+        "200":
+          description: Успешная авторизация
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/inline_response_201_successfull_auth"
+        "400":
+          description: Неверный запрос
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Неверный email или пароль
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /logout:
+    post:
+      tags:
+      - Auth
+      summary: Разлогиниться (инвалидировать токен)
+      responses:
+        "200":
+          description: Успешный выход из системы
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InlineResponseOk"
+        "401":
+          description: Неавторизован
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      security:
+      - bearerAuth: []
+  /offers:
+    get:
+      tags:
+      - Offers
+      summary: Получить список офферов недвижимости
+      parameters:
+      - name: property_type
+        in: query
+        description: "Фильтр по типу недвижимости (flat, house и т.д.)"
+        required: false
+        schema:
+          type: string
+      - name: offer_type
+        in: query
+        description: "Фильтр по типу объявления (sale, rent)"
+        required: false
+        schema:
+          type: string
+      - name: category
+        in: query
+        description: "Категория недвижимости (new, secondary)"
+        required: false
+        schema:
+          type: string
+      - name: location
+        in: query
+        description: Поиск по локации или тексту
+        required: false
+        schema:
+          type: string
+      - name: min_price
+        in: query
+        description: Минимальная цена
+        required: false
+        schema:
+          type: number
+      - name: max_price
+        in: query
+        description: Максимальная цена
+        required: false
+        schema:
+          type: number
+      - name: min_area
+        in: query
+        description: Минимальная площадь
+        required: false
+        schema:
+          type: number
+      - name: max_area
+        in: query
+        description: Максимальная площадь
+        required: false
+        schema:
+          type: number
+      responses:
+        "200":
+          description: Список офферов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OfferInFeed"
+              example:
+              - id: 101
+                price: 8600000
+                area: 78.9
+                rooms: 3
+                floor: 3
+                total_floors: 8
+                address: "Москва, Пролетарский проспект, 27"
+                metro: Кантемировская
+                image_url: https://example.com/images/apartment1.jpg
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /offers/{offer_id}:
+    get:
+      tags:
+      - Offers
+      summary: Получить конкретное объявление
+      parameters:
+      - name: offer_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        "200":
+          description: Данные объявления
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Offer"
+              example:
+                id: 101
+                offer_type: sale
+                property_type: flat
+                category: secondary
+                address: "Москва, Пролетарский проспект, 27"
+                floor: 3
+                total_floors: 8
+                rooms: 3
+                area: 78.9
+                living_area: 50.0
+                kitchen_area: 12.0
+                price: 8600000
+                created_at: 2025-10-01T12:34:56Z
+                description: Просторная 3-комнатная квартира рядом с метро.
+                image_url: https://example.com/images/apartment1.jpg
+        "401":
+          description: Неавторизован
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Доступ запрещен (это чужое объявление)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Объявление не найдено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      security:
+      - bearerAuth: []
+    put:
+      tags:
+      - Offers
+      summary: Изменить объявление
+      parameters:
+      - name: offer_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OfferUpdate"
+            example:
+              offer_type: sale
+              property_type: flat
+              category: secondary
+              address: "Москва, Пролетарский проспект, 27"
+              floor: 3
+              total_floors: 8
+              rooms: 3
+              area: 78.9
+              price: 8600000
+              description: Обновлённое описание
+        required: true
+      responses:
+        "200":
+          description: Объявление успешно обновлено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InlineResponseOk"
+        "400":
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Неавторизован
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Доступ запрещен
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Объявление не найдено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      security:
+      - bearerAuth: []
+    delete:
+      tags:
+      - Offers
+      summary: Удалить объявление
+      parameters:
+      - name: offer_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        "200":
+          description: Объявление успешно удалено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InlineResponseOk"
+        "401":
+          description: Неавторизован
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Доступ запрещен (это чужое объявление)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Объявление не найдено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      security:
+      - bearerAuth: []
+  /offers/create:
+    post:
+      tags:
+      - Offers
+      summary: Создать новое объявление
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OfferCreate"
+            example:
+              offer_type: sale
+              property_type: flat
+              category: new
+              address: "Москва, улица Арбат, 24"
+              floor: 3
+              total_floors: 8
+              rooms: 2
+              area: 50.5
+              living_area: 30.0
+              kitchen_area: 8.0
+              price: 5200000
+              deposit: 0
+              commission: 3
+        required: true
+      responses:
+        "201":
+          description: Объявление успешно создано
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Offer"
+        "400":
+          description: Неверный запрос
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Профиль не заполнен
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      security:
+      - bearerAuth: []
+  /complexes/{complex_id}:
+    get:
+      tags:
+      - Complexes
+      summary: Получить информацию о жилом комплексе и доступных апартаментах
+      parameters:
+      - name: complex_id
+        in: path
+        description: ID жилого комплекса
+        required: true
+        schema:
+          type: integer
+      responses:
+        "200":
+          description: Информация о ЖК и доступные квартиры
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/inline_response_200_housing_complex"
+        "404":
+          description: ЖК не найден
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /image/{filename}:
+    get:
+      tags:
+      - Media
+      summary: Получить изображение
+      parameters:
+      - name: filename
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Файл найден
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Файл не найден
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /image:
+    post:
+      tags:
+      - Media
+      summary: Загрузить изображение
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/image_body"
+        required: true
+      responses:
+        "201":
+          description: Изображение успешно загружено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/inline_response_201_upload_image"
+        "400":
+          description: Ошибка загрузки
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      security:
+      - bearerAuth: []
+  /profile/info:
+    get:
+      tags:
+      - Profile
+      summary: Получить информацию о профиле пользователя
+      responses:
+        "200":
+          description: Информация о пользователе
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/inline_response_200_profile_info"
+        "401":
+          description: Неавторизован
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      security:
+      - bearerAuth: []
+    put:
+      tags:
+      - Profile
+      summary: Обновить информацию профиля
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/profile_info_body"
+        required: true
+      responses:
+        "200":
+          description: Профиль успешно обновлен
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/inline_response_200_profile_put"
+        "400":
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Неавторизован
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      security:
+      - bearerAuth: []
+  /profile/security:
+    put:
+      tags:
+      - Profile
+      summary: Изменить пароль пользователя
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/profile_security_body"
+        required: true
+      responses:
+        "200":
+          description: Пароль успешно изменен
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InlineResponseOk"
+        "400":
+          description: "Ошибка валидации (например, новый пароль некорректен)"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Неавторизован или неверный текущий пароль
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      security:
+      - bearerAuth: []
+  /profile/myoffers:
+    get:
+      tags:
+      - Profile
+      summary: Получить список моих объявлений
+      responses:
+        "200":
+          description: Список объявлений текущего пользователя
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Offer"
+        "401":
+          description: Неавторизован
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      security:
+      - bearerAuth: []
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          example: Некорректные данные запроса
+      description: Общая схема ошибки
+    InlineResponseOk:
+      type: object
+      properties:
+        message:
+          type: string
+          example: OK
+    OfferInFeed:
+      type: object
+      properties:
+        offer_type:
+          type: string
+          example: sale
+          enum:
+          - sale
+          - rent
+        property_type:
+          type: string
+          example: flat
+          enum:
+          - flat
+          - house
+        id:
+          type: integer
+          example: 101
+        price:
+          type: number
+          example: 8600000
+        area:
+          type: number
+          example: 78.9
+        rooms:
+          type: integer
+          example: 3
+        floor:
+          type: integer
+          example: 3
+        total_floors:
+          type: integer
+          example: 8
+        address:
+          type: string
+          example: "Москва, Пролетарский проспект, 27"
+        metro:
+          type: string
+          example: Кантемировская
+        image_url:
+          type: string
+          format: uri
+          example: https://example.com/images/apartment1.jpg
+      description: Базовая информация об объявлении для списка/ленты
+    Offer:
+      allOf:
+      - $ref: "#/components/schemas/OfferInFeed"
+      - type: object
+        properties:
+          offer_type:
+            type: string
+            example: sale
+            enum:
+            - sale
+            - rent
+          property_type:
+            type: string
+            example: flat
+            enum:
+            - flat
+            - house
+          category:
+            type: string
+            example: secondary
+            enum:
+            - new
+            - secondary
+          living_area:
+            type: number
+            example: 50
+          kitchen_area:
+            type: number
+            example: 12
+          description:
+            type: string
+            example: Просторная 3-комнатная квартира рядом с метро.
+          created_at:
+            type: string
+            format: date-time
+            example: 2025-10-01T12:34:56Z
+        description: Полная модель объявления
+    OfferCreate:
+      required:
+      - address
+      - area
+      - category
+      - floor
+      - offer_type
+      - price
+      - property_type
+      - rooms
+      - total_floors
+      type: object
+      properties:
+        offer_type:
+          type: string
+          example: sale
+          enum:
+          - sale
+          - rent
+        property_type:
+          type: string
+          example: flat
+          enum:
+          - flat
+          - house
+        category:
+          type: string
+          example: new
+          enum:
+          - new
+          - secondary
+        address:
+          type: string
+          example: "Москва, улица Арбат, 24"
+        floor:
+          type: integer
+          example: 3
+        total_floors:
+          type: integer
+          example: 8
+        rooms:
+          type: integer
+          example: 2
+        area:
+          type: number
+          format: float
+          example: 50.5
+        living_area:
+          type: number
+          format: float
+          example: 30
+        kitchen_area:
+          type: number
+          format: float
+          example: 8
+        price:
+          type: number
+          example: 5200000
+        deposit:
+          type: number
+          example: 0
+        commission:
+          type: number
+          example: 3
+        rental_period:
+          type: string
+          example: monthly
+      description: Схема для создания объявления
+    OfferUpdate:
+      type: object
+      properties:
+        offer_type:
+          type: string
+          enum:
+          - sale
+          - rent
+        property_type:
+          type: string
+          enum:
+          - flat
+          - house
+        category:
+          type: string
+          enum:
+          - new
+          - secondary
+        address:
+          type: string
+        floor:
+          type: integer
+        total_floors:
+          type: integer
+        rooms:
+          type: integer
+        area:
+          type: number
+        living_area:
+          type: number
+        kitchen_area:
+          type: number
+        price:
+          type: number
+        description:
+          type: string
+      description: Схема частичного/полного обновления объявления
+    Complex:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: ЖК Цветочные поляны
+        address:
+          type: string
+          example: "Москва, улица Арбат, 24"
+        city:
+          type: string
+          example: Москва
+        developer:
+          type: string
+          example: ООО Девелопер
+        built_year:
+          type: integer
+          example: 2024
+        image_url:
+          type: string
+          format: uri
+          example: https://example.com/images/complex1.jpg
+      description: Информация о жилом комплексе
+    register_body:
+      required:
+      - email
+      - password
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        password:
+          type: string
+          format: password
+          example: secret123
+    inline_response_201_auth:
+      type: object
+      properties:
+        token:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        email:
+          type: string
+          example: user@example.com
+    login_body:
+      required:
+      - email
+      - password
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        password:
+          type: string
+          example: VictoriyaSecret123
+    inline_response_200_housing_complex:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: ЖК Цветочные поляны
+        price_from:
+          type: number
+          format: float
+          example: 28800000
+        address:
+          type: string
+          example: "Москва, улица Арбат, 24"
+        metro:
+          type: string
+          example: Арбатская
+        description:
+          type: string
+          example: ЖК «Турандот» — это элитный клубный дом...
+        apartments:
+          type: array
+          items:
+            $ref: "#/components/schemas/inline_response_200_apartments"
+        images:
+          type: array
+          items:
+            type: string
+            example: https://example.com/images/complex1.jpg
+    image_body:
+      required:
+      - file
+      type: object
+      properties:
+        file:
+          type: string
+          format: binary
+    inline_response_201_upload_image:
+      type: object
+      properties:
+        url:
+          type: string
+          example: https://homa.com/media/image123.jpg
+    inline_response_200_profile_info:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 123
+        first_name:
+          type: string
+          example: Иван
+        last_name:
+          type: string
+          example: Иванов
+        email:
+          type: string
+          format: email
+          example: ivan@example.com
+        phone:
+          type: string
+          example: "+79261234567"
+        photo_url:
+          type: string
+          format: uri
+          example: https://example.com/photos/1.jpg
+    profile_info_body:
+      required:
+      - email
+      - first_name
+      - last_name
+      - phone
+      - photo
+      type: object
+      properties:
+        first_name:
+          type: string
+          example: Иван
+        last_name:
+          type: string
+          example: Иванов
+        email:
+          type: string
+          format: email
+          example: ivan@example.com
+        phone:
+          type: string
+          example: "+79261234567"
+        photo:
+          type: string
+          format: binary
+    inline_response_200_profile_put:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Профиль обновлен
+        profile:
+          $ref: "#/components/schemas/inline_response_200_2_profile"
+    profile_security_body:
+      required:
+      - new_password
+      - old_password
+      type: object
+      properties:
+        old_password:
+          type: string
+          description: Текущий пароль пользователя
+          format: password
+          example: OldSecret123
+        new_password:
+          minLength: 6
+          type: string
+          description: Новый пароль
+          format: password
+          example: NewSecret456
+        new_password_again:
+          minLength: 6
+          type: string
+          description: Повтор нового пароля
+          format: password
+          example: NewSecret456
+    inline_response_201_user:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 123
+        email:
+          type: string
+          example: user@example.com
+    inline_response_200_apartments:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 101
+        title:
+          type: string
+          example: "3-комн. кв., 78.9м², 3/8 этаж"
+        price:
+          type: number
+          format: float
+          example: 8600000
+        rooms:
+          type: integer
+          example: 3
+        area:
+          type: number
+          format: float
+          example: 78.9
+        floor:
+          type: string
+          example: 3/8
+        address:
+          type: string
+          example: "Пролетарский проспект, 27"
+        metro:
+          type: string
+          example: Кантемировская
+        images:
+          type: array
+          description: Список изображений для слайдера
+          items:
+            type: string
+            format: url
+    inline_response_200_2_profile:
+      type: object
+      properties:
+        id:
+          type: integer
+        first_name:
+          type: string
+        last_name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        photo_url:
+          type: string
+          format: uri
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
