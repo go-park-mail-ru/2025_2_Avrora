@@ -8,10 +8,10 @@ import (
 )
 
 var (
-	ErrUserAlreadyExists   = errors.New("Пользователь с таким email уже существует")
-	ErrInvalidCredentials  = errors.New("Неправильные email или пароль")
-	ErrInvalidInput        = errors.New("Невалидные данные")
-	ErrServerSideError     = errors.New("Серверная ошибка")
+	ErrUserAlreadyExists   = errors.New("пользователь с таким email уже существует")
+	ErrInvalidCredentials  = errors.New("неправильные email или пароль")
+	ErrInvalidInput        = errors.New("невалидные данные")
+	ErrServerSideError     = errors.New("серверная ошибка")
 )
 
 func (uc *authUsecase) Register(email, password string) error {

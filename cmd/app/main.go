@@ -5,15 +5,19 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/go-park-mail-ru/2025_2_Avrora/internal/db"
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/handlers"
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/middleware"
-	"github.com/go-park-mail-ru/2025_2_Avrora/internal/db"
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/utils"
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/usecase"
+	"go.uber.org/zap"
 )
 
 func main() {
 	utils.LoadEnv()
+	var logger *zap.Logger
+	logger, _ = zap.NewProduction()
+	defer logger.Sync()
 	cors_origin := os.Getenv("CORS_ORIGIN")
 	port := os.Getenv("SERVER_PORT")
 	dbConn, err := db.New(utils.GetPostgresDSN())
@@ -50,8 +54,9 @@ func main() {
 
 	mux.Handle("/api/v1/image/", http.StripPrefix("/api/v1/image/", http.FileServer(http.Dir("image/"))))
 
-	handlerWithCORS := middleware.CorsMiddleware(mux, cors_origin)
+	handler := middleware.LoggerMiddleware(logger)(mux)
+	handler = middleware.CorsMiddleware(handler, cors_origin)
 
-	log.Printf("Starting server on port %s", port)
-	log.Fatal(http.ListenAndServe(":"+port, handlerWithCORS))
+	logger.Info("starting server", zap.String("port", port))
+	logger.Fatal("server stopped", zap.Error(http.ListenAndServe(":"+port, handler)))
 }
