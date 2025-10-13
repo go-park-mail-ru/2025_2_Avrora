@@ -18,13 +18,13 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 
 func (r *UserRepository) GetUserByEmail(email string) (*domain.User, error) {
 	user := domain.User{}
-	err := r.db.QueryRow("SELECT id, email, password, created_at FROM users WHERE email = $1", email).
+	err := r.db.QueryRow(getUserByEmailQuery, email).
 		Scan(&user.ID, &user.Email, &user.Password, &user.CreatedAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return &domain.User{}, domain.ErrUserNotFound
+			return nil, domain.ErrUserNotFound
 		}
-		return &domain.User{}, err
+		return nil, err
 	}
 	return &user, nil
 }
@@ -33,28 +33,29 @@ func (r *UserRepository) Create(user *domain.User) error {
 	now := time.Now()
 	user.CreatedAt = now
 
-	err := r.db.QueryRow(
-		"INSERT INTO users (email, password, created_at) VALUES ($1, $2, $3) RETURNING id",
-		user.Email,
-		user.Password,
-		user.CreatedAt,
-	).Scan(&user.ID)
-
+	tx, err := r.db.Begin()
 	if err != nil {
 		return err
 	}
-	return nil
+
+	err = tx.QueryRow(createUserQuery, user.Email, user.Password, user.CreatedAt).Scan(&user.ID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit()
 }
 
 func (r *UserRepository) GetUserByID(id string) (*domain.User, error) {
 	user := domain.User{}
-	err := r.db.QueryRow("SELECT id, email, password, created_at FROM users WHERE id = $1", id).
+	err := r.db.QueryRow(getUserByIDQuery, id).
 		Scan(&user.ID, &user.Email, &user.Password, &user.CreatedAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return &domain.User{}, domain.ErrUserNotFound
+			return nil, domain.ErrUserNotFound
 		}
-		return &domain.User{}, err
+		return nil, err
 	}
 	return &user, nil
 }

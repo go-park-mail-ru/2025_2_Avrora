@@ -8,9 +8,9 @@ import (
 	"path/filepath"
 
 	migrate "github.com/golang-migrate/migrate/v4"
-	"github.com/golang-migrate/migrate/v4/database/postgres"
+	"github.com/golang-migrate/migrate/v4/database/pgx/v5"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-	_ "github.com/lib/pq"
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 type Database struct {
@@ -18,7 +18,7 @@ type Database struct {
 }
 
 func New(dataSourceName string) (*Database, error) {
-	db, err := sql.Open("postgres", dataSourceName)
+	db, err := sql.Open("pgx", dataSourceName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
@@ -43,9 +43,9 @@ func getMigrationsPath() string {
 
 	candidates := []string{
 		filepath.Join(wd, "internal", "db", "migrations"),
-		filepath.Join(wd, "db", "migrations"),            
-		filepath.Join(wd, "..", "internal", "infrastructure", "db", "migrations"),     
-		filepath.Join(wd, "..", "..", "internal", "infrastructure", "db", "migrations"),
+		filepath.Join(wd, "db", "migrations"),
+		filepath.Join(wd, "..", "internal", "db", "migrations"),
+		filepath.Join(wd, "..", "..", "internal", "db", "migrations"),
 	}
 
 	for _, path := range candidates {
@@ -63,7 +63,7 @@ func applyMigrations(db *sql.DB) error {
 		return fmt.Errorf("DB closed before migrations: %w", err)
 	}
 
-	driver, err := postgres.WithInstance(db, &postgres.Config{})
+	driver, err := pgx.WithInstance(db, &pgx.Config{})
 	if err != nil {
 		return err
 	}
@@ -95,7 +95,7 @@ func (r *Database) GetDB() *sql.DB {
 }
 
 func (r *Database) MigrateDown(steps uint) error {
-	driver, err := postgres.WithInstance(r.db, &postgres.Config{})
+	driver, err := pgx.WithInstance(r.db, &pgx.Config{})
 	if err != nil {
 		return err
 	}
@@ -108,6 +108,6 @@ func (r *Database) MigrateDown(steps uint) error {
 	if err != nil {
 		return err
 	}
-	
+
 	return m.Steps(-int(steps))
 }

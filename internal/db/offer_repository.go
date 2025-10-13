@@ -18,11 +18,7 @@ func NewOfferRepository(db *sql.DB) *OfferRepository {
 
 func (r *OfferRepository) GetByID(id string) (*models.Offer, error) {
 	offer := models.Offer{}
-	err := r.db.QueryRow(`
-		SELECT id, user_id, location_id, category_id, title, description, image, price, area, rooms, address, offer_type, created_at, updated_at
-		FROM offer
-		WHERE id = $1
-	`, id).Scan(
+	err := r.db.QueryRow(getOfferByIDQuery, id).Scan(
 		&offer.ID,
 		&offer.UserID,
 		&offer.LocationID,
@@ -40,9 +36,9 @@ func (r *OfferRepository) GetByID(id string) (*models.Offer, error) {
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return &models.Offer{}, models.ErrOfferNotFound
+			return nil, models.ErrOfferNotFound
 		}
-		return &models.Offer{}, err
+		return nil, err
 	}
 	return &offer, nil
 }
@@ -50,12 +46,7 @@ func (r *OfferRepository) GetByID(id string) (*models.Offer, error) {
 func (r *OfferRepository) List(page, limit int) ([]*models.Offer, error) {
 	offset := (page - 1) * limit
 
-	rows, err := r.db.Query(`
-		SELECT id, user_id, location_id, category_id, title, description, image, price, area, rooms, address, offer_type, created_at, updated_at
-		FROM offer
-		ORDER BY created_at DESC
-		LIMIT $1 OFFSET $2
-	`, limit, offset)
+	rows, err := r.db.Query(listOffersQuery, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -94,11 +85,13 @@ func (r *OfferRepository) Create(offer *models.Offer) error {
 	offer.CreatedAt = now
 	offer.UpdatedAt = now
 
-	return r.db.QueryRow(`
-		INSERT INTO offer (id, user_id, location_id, category_id, title, description, image, price, area, rooms, address, offer_type, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-		RETURNING id
-	`,
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+
+	err = tx.QueryRow(
+		createOfferQuery,
 		offer.ID,
 		offer.UserID,
 		offer.LocationID,
@@ -114,16 +107,24 @@ func (r *OfferRepository) Create(offer *models.Offer) error {
 		offer.CreatedAt,
 		offer.UpdatedAt,
 	).Scan(&offer.ID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit()
 }
 
 func (r *OfferRepository) Update(offer *models.Offer) error {
 	offer.UpdatedAt = time.Now()
 
-	_, err := r.db.Exec(`
-		UPDATE offer
-		SET title = $1, description = $2, image = $3, price = $4, area = $5, rooms = $6, address = $7, offer_type = $8, updated_at = $9
-		WHERE id = $10
-	`,
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(
+		updateOfferQuery,
 		offer.Title,
 		offer.Description,
 		offer.Image,
@@ -135,27 +136,37 @@ func (r *OfferRepository) Update(offer *models.Offer) error {
 		offer.UpdatedAt,
 		offer.ID,
 	)
-	return err
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit()
 }
 
 func (r *OfferRepository) Delete(id string) error {
-	_, err := r.db.Exec("DELETE FROM offer WHERE id = $1", id)
-	return err
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(deleteOfferQuery, id)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit()
 }
 
 func (r *OfferRepository) CountAll() (int, error) {
 	var total int
-	err := r.db.QueryRow("SELECT COUNT(*) FROM offer").Scan(&total)
+	err := r.db.QueryRow(countAllOffersQuery).Scan(&total)
 	return total, err
 }
 
 func (r *OfferRepository) ListByUserID(userID string) ([]*models.Offer, error) {
-	rows, err := r.db.Query(`
-		SELECT id, user_id, location_id, category_id, title, description, image, price, area, rooms, address, offer_type, created_at, updated_at
-		FROM offer
-		WHERE user_id = $1
-		ORDER BY created_at DESC
-	`, userID)
+	rows, err := r.db.Query(listOffersByUserIDQuery, userID)
 	if err != nil {
 		return nil, err
 	}
