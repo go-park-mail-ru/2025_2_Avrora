@@ -5,11 +5,11 @@ info:
   version: 2.0.0
 servers:
 - url: https://virtserver.swaggerhub.com/avroraora/Homa/2.0.0
-  description: SwaggerHub API Auto Mocking
+  description: SwaggerHub API
 - url: http://37.139.40.252:8000
   description: Production server (виртуалка)
 - url: http://localhost:8080/api/v1
-  description: Avrora backend API base url
+  description: Backend API BASE URL
 paths:
   /register:
     post:
@@ -28,7 +28,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/inline_response_201_successfull_auth"
+                $ref: "#/components/schemas/inline_response_201_auth"
         "400":
           description: Неверный запрос
           content:
@@ -64,7 +64,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/inline_response_201_successfull_auth"
+                $ref: "#/components/schemas/inline_response_201_auth"
         "400":
           description: Неверный запрос
           content:
@@ -94,7 +94,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/InlineResponseOk"
+                $ref: "#/components/schemas/inline_response_200_logout"
         "401":
           description: Неавторизован
           content:
@@ -120,19 +120,21 @@ paths:
         description: "Фильтр по типу недвижимости (flat, house и т.д.)"
         required: false
         schema:
-          type: string
+          $ref: "#/components/schemas/OfferPropertyType"
+
       - name: offer_type
         in: query
-        description: "Фильтр по типу объявления (sale, rent)"
+        description: Фильтр по типу объявления
         required: false
         schema:
-          type: string
+          $ref: "#/components/schemas/OfferType"
+
       - name: category
         in: query
-        description: "Категория недвижимости (new, secondary)"
+        description: Категория недвижимости
         required: false
         schema:
-          type: string
+          $ref: "#/components/schemas/OfferCategory"
       - name: location
         in: query
         description: Поиск по локации или тексту
@@ -169,19 +171,8 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/OfferInFeed"
-              example:
-              - id: 101
-                price: 8600000
-                area: 78.9
-                rooms: 3
-                floor: 3
-                total_floors: 8
-                address: "Москва, Пролетарский проспект, 27"
-                metro: Кантемировская
-                image_url: https://example.com/images/apartment1.jpg
+                type: object
+                $ref: "#/components/schemas/OffersInFeed"
         "500":
           description: Внутренняя ошибка сервера
           content:
@@ -240,8 +231,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-      security:
-      - bearerAuth: []
     put:
       tags:
       - Offers
@@ -382,7 +371,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Offer"
+                $ref: "#/components/schemas/OfferURL"
         "400":
           description: Неверный запрос
           content:
@@ -403,6 +392,42 @@ paths:
                 $ref: "#/components/schemas/Error"
       security:
       - bearerAuth: []
+  /get_residential_complex_names:
+    get:
+      tags:
+      - Complexes
+      summary: Получить список жилых комплексов
+      responses:
+        "200":
+          description: Список жилых комплексов
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/inline_response_200_get_residential_complex_names"
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /complexes:
+    get:
+      tags:
+      - Complexes
+      summary: Получить список жилых комплексов
+      responses:
+        "200":
+          description: Список жилых комплексов
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ComplexesInFeed"
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /complexes/{complex_id}:
     get:
       tags:
@@ -611,7 +636,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/Offer"
+                  $ref: "#/components/schemas/OfferInFeed"
         "401":
           description: Неавторизован
           content:
@@ -644,6 +669,10 @@ components:
     OfferInFeed:
       type: object
       properties:
+        offer_url:  
+          type: string
+          format: uri
+          example: https://example.com/offers/101
         offer_type:
           type: string
           example: sale
@@ -685,23 +714,28 @@ components:
           format: uri
           example: https://example.com/images/apartment1.jpg
       description: Базовая информация об объявлении для списка/ленты
+    OffersInFeed:
+        properties:
+        type: object
+        properties:
+          meta:
+            type: object
+            properties:
+              total:
+                type: integer
+                example: 10
+              offset:
+                type: integer
+                example: 0
+          offers:
+            type: array
+            items:
+              $ref: "#/components/schemas/OfferInFeed"
     Offer:
       allOf:
       - $ref: "#/components/schemas/OfferInFeed"
       - type: object
         properties:
-          offer_type:
-            type: string
-            example: sale
-            enum:
-            - sale
-            - rent
-          property_type:
-            type: string
-            example: flat
-            enum:
-            - flat
-            - house
           category:
             type: string
             example: secondary
@@ -721,20 +755,39 @@ components:
             type: string
             format: date-time
             example: 2025-10-01T12:34:56Z
+          updated_at:
+            type: string
+            format: date-time
+            example: 2025-10-01T12:34:56Z
+          user_url:
+            type: string
+            format: uri
+            example: https://example.com/users/123
+          user_avatar_url:
+            type: string
+            format: uri
+            example: https://example.com/users/123/avatar
+          user_full_name:
+            type: string
+            example: Иванов Иван Иванович
+          user_id:
+            type: integer
+            example: 123
         description: Полная модель объявления
     OfferCreate:
-      required:
-      - address
-      - area
-      - category
-      - floor
-      - offer_type
-      - price
-      - property_type
-      - rooms
-      - total_floors
       type: object
       properties:
+        in_housing_complex:
+          type: boolean
+          example: false
+          default: false
+        housing_complex: # При условии что in_housing_complex = true;
+          type: enum
+          example: "«Турандот»"
+          enum:
+          - "«Турандот»"
+          - "«Девелопер»"
+          - "«Кутузовский»"
         offer_type:
           type: string
           example: sale
@@ -780,6 +833,9 @@ components:
         price:
           type: number
           example: 5200000
+        description:
+          type: string
+          example: Просторная 3-комнатная квартира рядом с метро.
         deposit:
           type: number
           example: 0
@@ -789,43 +845,88 @@ components:
         rental_period:
           type: string
           example: monthly
+        image_urls:
+          type: array
+          items:
+            type: string
+            format: binary
       description: Схема для создания объявления
     OfferUpdate:
       type: object
       properties:
+        in_housing_complex:
+          type: boolean
+          example: false
+          default: false
+        housing_complex:
+          type: enum
+          example: "«Турандот»"
+          enum:
+          - "«Турандот»"
+          - "«Девелопер»"
+          - "«Кутузовский»"
         offer_type:
           type: string
+          example: sale
           enum:
           - sale
           - rent
         property_type:
           type: string
+          example: flat
           enum:
           - flat
           - house
         category:
           type: string
+          example: new
           enum:
           - new
           - secondary
         address:
           type: string
+          example: "Москва, улица Арбат, 24"
         floor:
           type: integer
+          example: 3
         total_floors:
           type: integer
+          example: 8
         rooms:
           type: integer
+          example: 2
         area:
           type: number
+          format: float
+          example: 50.5
         living_area:
           type: number
+          format: float
+          example: 30
         kitchen_area:
           type: number
+          format: float
+          example: 8
         price:
           type: number
+          example: 5200000
         description:
           type: string
+          example: Просторная 3-комнатная квартира рядом с метро.
+        deposit:
+          type: number
+          example: 0
+        commission:
+          type: number
+          example: 3
+        rental_period:
+          type: string
+          example: monthly
+        image_urls:
+          type: array
+          items:
+            type: string
+            format: binary
       description: Схема частичного/полного обновления объявления
     Complex:
       type: object
@@ -847,12 +948,19 @@ components:
           example: ООО Девелопер
         built_year:
           type: integer
-          example: 2024
+          example: 1980
         image_url:
           type: string
           format: uri
           example: https://example.com/images/complex1.jpg
       description: Информация о жилом комплексе
+    ComplexesInFeed:
+      type: object
+      properties:
+        complexes:
+          type: array
+          items:
+            $ref: "#/components/schemas/Complex"
     register_body:
       required:
       - email
@@ -876,6 +984,12 @@ components:
         email:
           type: string
           example: user@example.com
+    inline_response_200_logout:
+      type: object
+      properties:
+        token:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
     login_body:
       required:
       - email
@@ -889,6 +1003,18 @@ components:
         password:
           type: string
           example: VictoriyaSecret123
+    OfferURL:
+      type: object
+      properties:
+        url: string
+      description: Ссылка на объявление
+    inline_response_200_get_residential_complex_names:
+      type: object
+      properties:
+        names:
+          type: array
+          items:
+            type: string
     inline_response_200_housing_complex:
       type: object
       properties:
@@ -1007,12 +1133,6 @@ components:
           description: Новый пароль
           format: password
           example: NewSecret456
-        new_password_again:
-          minLength: 6
-          type: string
-          description: Повтор нового пароля
-          format: password
-          example: NewSecret456
     inline_response_201_user:
       type: object
       properties:
@@ -1073,6 +1193,29 @@ components:
         photo_url:
           type: string
           format: uri
+    OfferPropertyType:
+      type: string
+      description: Тип недвижимости
+      enum:
+        - flat
+        - house
+      example: flat
+
+    OfferType:
+      type: string
+      description: Тип объявления
+      enum:
+        - продажа
+        - аренда
+      example: продажа
+
+    OfferCategory:
+      type: string
+      description: Категория недвижимости
+      enum:
+        - новый
+        - вторичка
+      example: вторичка
   securitySchemes:
     bearerAuth:
       type: http
