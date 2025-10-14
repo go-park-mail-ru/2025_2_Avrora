@@ -2,51 +2,38 @@ version: "2"
 
 run:
   timeout: 5m
-  go: '1.25'  # match your Go version
+  go: '1.25'
 
 linters:
   default: none
   enable:
-    # 🔒 Correctness & Safety
-    - errcheck          # unchecked errors
-    - errorlint         # Go 1.13+ error wrapping issues
-    - nilerr            # returns nil after checking err != nil
-    - nilnesserr        # returns wrong nil error
-    - wrapcheck         # ensures external errors are wrapped
-    - contextcheck      # detects missing context propagation
-    - noctx             # finds HTTP/client calls without context
-    - rowserrcheck      # checks sql.Rows.Err
-    - sqlclosecheck     # ensures DB resources are closed
-    - bodyclose         # ensures HTTP response bodies are closed
-
-    # 🛡️ Security
-    - gosec             # common security issues (e.g., weak crypto)
-
-    # 🧠 Code Quality
-    - staticcheck       # (includes gosimple + stylecheck) — powerful static analysis
-    - unused            # unused code (replaces deadcode/varcheck/structcheck)
-    - ineffassign       # useless assignments
-    - unconvert         # unnecessary type conversions
-    - makezero          # non-zero-length slices that should be zero
-    - musttag           # enforces JSON/YAML tags on marshaled structs
-    - revive            # modern, configurable style checker (replaces golint)
-
-    # 📦 Architecture & Imports
-    - depguard          # enforces allowed dependencies (you already use this)
-    - importas          # consistent import aliases
-
-    # 🧪 Testing
-    - paralleltest      # missing t.Parallel()
-    - testifylint       # correct usage of testify
-
-    # ✍️ Style & Readability
-    - misspell          # typo checker (comments/strings)
-    - whitespace        # removes stray newlines
-    - copyloopvar       # detects unsafe loop variable captures (Go 1.22+)
+    - errcheck
+    - errorlint
+    - nilerr
+    - nilnesserr
+    - wrapcheck
+    - contextcheck
+    - noctx
+    - rowserrcheck
+    - sqlclosecheck
+    - bodyclose
+    - gosec
+    - staticcheck
+    - unused
+    - ineffassign
+    - unconvert
+    - makezero
+    - musttag
+    - revive
+    - depguard
+    - importas
+    - paralleltest
+    - testifylint
+    - misspell
+    - whitespace
+    - copyloopvar
 
 formatters:
-  # Only enable if you plan to run `golangci-lint fmt`
-  # Otherwise, omit this section
   enable:
     - gofmt
 
@@ -57,7 +44,7 @@ linters-settings:
 
   gosec:
     excludes:
-      - G404  # weak RNG (ok for non-crypto uses)
+      - G404
 
   depguard:
     rules:
@@ -74,12 +61,10 @@ linters-settings:
           - golang.org/x/crypto/bcrypt
 
   revive:
-    # Minimal style rules; you can expand if needed
     rules:
       - name: var-naming
 
   wrapcheck:
-    # Ignore common stdlib-like interfaces if needed
     ignore-interface-regexps:
       - '^(?i)c(?-i)ach(ing|e)'
 
