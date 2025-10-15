@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"context"
 	"net"
 	"net/http"
 	"strings"
@@ -10,49 +9,50 @@ import (
 	"go.uber.org/zap"
 )
 
-const RequestIDKey contextKey = "request_id"
-
 func LoggerMiddleware(logger *zap.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
 
-			requestID := r.Header.Get("X-Request-ID")
-			if requestID == "" {
-				requestID = generateRequestID()
+			requestID, ok := r.Context().Value(RequestIDKey).(string)
+			if !ok {
+				requestID = "unknown"
 			}
-
-			ctx := context.WithValue(r.Context(), RequestIDKey, requestID)
-			r = r.WithContext(ctx)
 
 			ww := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
 
 			next.ServeHTTP(ww, r)
 
 			duration := time.Since(start)
+
+			ip := getClientIP(r)
+
+			remoteAddr := r.RemoteAddr
+
+			referer := r.Referer()
+
 			fields := []zap.Field{
 				zap.String("request_id", requestID),
 				zap.String("method", r.Method),
 				zap.String("path", r.URL.Path),
 				zap.Int("status", ww.statusCode),
 				zap.Duration("duration", duration),
-				zap.String("ip", getClientIP(r)),
+				zap.String("ip", ip),                   
+				zap.String("remote_addr", remoteAddr),  
+				zap.String("referer", referer),         
 				zap.String("user_agent", r.UserAgent()),
 			}
 
-			if ww.statusCode >= 500 {
+			switch {
+			case ww.statusCode >= 500:
 				logger.Error("server error", fields...)
-			} else if ww.statusCode >= 400 {
+			case ww.statusCode >= 400:
 				logger.Warn("client error", fields...)
-			} else {
+			default:
 				logger.Info("request completed", fields...)
 			}
 		})
 	}
-}
-
-func generateRequestID() string {
-	return time.Now().Format("20060102150405")[:8]
 }
 
 func getClientIP(r *http.Request) string {
