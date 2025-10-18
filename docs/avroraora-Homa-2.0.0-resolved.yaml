@@ -474,7 +474,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/inline_response_200_housing_complex"
+                $ref: "#/components/schemas/Complex"
         "404":
           description: ЖК не найден
           content:
@@ -999,27 +999,54 @@ components:
         address:
           type: string
           example: "Москва, улица Арбат, 24"
-        city:
+        metro:
           type: string
-          example: Москва
+          example: Кантемировская
         developer:
           type: string
           example: ООО Девелопер
         built_year:
           type: integer
           example: 1980
+        starting_price:
+          type: integer
+          example: 5000000
+        images:
+          type: array
+          items:
+            type: string
+            format: uri
+            example: https://example.com/images/complex1.jpg
+      description: Информация о жилом комплексе
+    ComplexInFeed:
+      type: object
+      properties:
+        name:
+          type: string
+          example: ЖК Цветочные поляны
+        address:
+          type: string
+          example: "Москва, улица Арбат, 24"
+        metro:
+          type: string
+          example: Кантемировская
+        built_year:
+          type: integer
+          example: 1980
+        starting_price:
+          type: integer
+          example: 5000000
         image_url:
           type: string
           format: uri
           example: https://example.com/images/complex1.jpg
-      description: Информация о жилом комплексе
     ComplexesInFeed:
       type: object
       properties:
         complexes:
           type: array
           items:
-            $ref: "#/components/schemas/Complex"
+            $ref: "#/components/schemas/ComplexInFeed"
     register_body:
       required:
       - email
@@ -1074,37 +1101,6 @@ components:
           type: array
           items:
             type: string
-    inline_response_200_housing_complex:
-      type: object
-      properties:
-        id:
-          type: integer
-          example: 1
-        name:
-          type: string
-          example: ЖК Цветочные поляны
-        price_from:
-          type: number
-          format: float
-          example: 28800000
-        address:
-          type: string
-          example: "Москва, улица Арбат, 24"
-        metro:
-          type: string
-          example: Арбатская
-        description:
-          type: string
-          example: ЖК «Турандот» — это элитный клубный дом...
-        apartments:
-          type: array
-          items:
-            $ref: "#/components/schemas/inline_response_200_apartments"
-        images:
-          type: array
-          items:
-            type: string
-            example: https://example.com/images/complex1.jpg
     image_body:
       required:
       - file
