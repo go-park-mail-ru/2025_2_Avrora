@@ -24,12 +24,16 @@ dbname="2025_2_Avrora"
 
 ```bash
 psql -u postgres -h localhost
-create database "2025_2_Avrora"
+create database "2025_2_Avrora";
 ```
 
-### Тестовая бд
+### Linter
+
+Если не видит команду golangci-lint
 
 ```bash
-psql -u postgres -h localhost
-create database "2025_2_Avrora_test"
-``` 
+go mod tidy
+export GOROOT=/usr/local/go
+export GOPATH=$HOME/go
+export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
+```

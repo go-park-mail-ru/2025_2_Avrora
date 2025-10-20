@@ -49,14 +49,17 @@ func TestHashPassword_EmptyPassword(t *testing.T) {
 	}
 }
 
-// -------------------
-// Тест сравнения пароля
-// -------------------
 func TestComparePassword(t *testing.T) {
-	ph, _ := NewPasswordHasher("pepper123")
+	ph, err := NewPasswordHasher("pepper123")
+	if err != nil {
+		t.Fatalf("не ожидалось ошибки: %v", err)
+	}
 
 	password := "my_password"
-	hash, _ := ph.Hash(password)
+	hash, err := ph.Hash(password)
+	if err != nil {
+		t.Fatalf("ошибка при хешировании: %v", err)
+	}
 
 	if !ph.Compare(password, hash) {
 		t.Fatal("ожидалось, что пароль совпадает с хешем")

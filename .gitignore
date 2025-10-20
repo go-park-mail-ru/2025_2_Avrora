@@ -5,3 +5,4 @@ coverage
 cover.html
 .idea/
 test.ps1
+.DS_store

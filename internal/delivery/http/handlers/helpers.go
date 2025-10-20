@@ -22,12 +22,11 @@ func validatePassword(password string) bool {
 	var hasUpper, hasLower, hasDigit bool
 
 	for _, char := range password {
-		switch {
-		case unicode.IsUpper(char):
+		if unicode.IsUpper(char) {
 			hasUpper = true
-		case unicode.IsLower(char):
+		} else if unicode.IsLower(char) {
 			hasLower = true
-		case unicode.IsDigit(char):
+		} else if unicode.IsDigit(char) {
 			hasDigit = true
 		}
 	}

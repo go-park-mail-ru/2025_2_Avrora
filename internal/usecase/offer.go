@@ -38,7 +38,6 @@ func (uc *offerUsecase) ListByUserID(userID string) ([]*domain.Offer, error) {
 	return uc.offerRepo.ListByUserID(userID)
 }
 
-
 func (uc *offerUsecase) CountAll() (int, error) {
 	return uc.offerRepo.CountAll()
 }

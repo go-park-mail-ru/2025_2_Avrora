@@ -1,4 +1,4 @@
-.PHONY: test test-with-db
+.PHONY: test test-with-db lint
 
 DB_NAME := 2025_2_Avrora_test
 DB_USER := postgres
@@ -8,7 +8,11 @@ MIGRATIONS_DIR := ./infrastructure/db/migrations
 
 TEST_DB_URL := postgres://$(DB_USER):$(DB_PASS)@localhost:$(DB_PORT)/$(DB_NAME)?sslmode=disable
 
-test: test-with-db
+lint:
+	@echo "🔍 Running golangci-lint..."
+	golangci-lint run
+
+test: lint test-with-db
 
 test-with-db:
 	@echo "🚀 Starting PostgreSQL container..."
