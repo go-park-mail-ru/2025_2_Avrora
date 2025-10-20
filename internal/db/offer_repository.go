@@ -1,22 +1,26 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"time"
 
 	models "github.com/go-park-mail-ru/2025_2_Avrora/internal/domain"
+	"github.com/go-park-mail-ru/2025_2_Avrora/internal/log"
+	"go.uber.org/zap"
 )
 
 type OfferRepository struct {
 	db *sql.DB
+	log *log.Logger
 }
 
-func NewOfferRepository(db *sql.DB) *OfferRepository {
-	return &OfferRepository{db: db}
+func NewOfferRepository(db *sql.DB, log *log.Logger) *OfferRepository {
+	return &OfferRepository{db: db, log: log}
 }
 
-func (r *OfferRepository) GetByID(id string) (*models.Offer, error) {
+func (r *OfferRepository) GetByID(ctx context.Context, id string) (*models.Offer, error) {
 	offer := models.Offer{}
 	err := r.db.QueryRow(`
 		SELECT id, user_id, location_id, category_id, title, description, image, price, area, rooms, address, offer_type, created_at, updated_at
@@ -40,14 +44,18 @@ func (r *OfferRepository) GetByID(id string) (*models.Offer, error) {
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
+			r.log.Error(ctx, "offer not found", zap.String("id", id))
 			return &models.Offer{}, models.ErrOfferNotFound
 		}
+		r.log.Error(ctx, "failed to get offer", zap.String("id", id), zap.Error(err))
 		return &models.Offer{}, err
 	}
+
+	r.log.Info(ctx, "got offer", zap.String("id", id))
 	return &offer, nil
 }
 
-func (r *OfferRepository) List(page, limit int) ([]*models.Offer, error) {
+func (r *OfferRepository) List(ctx context.Context, page, limit int) ([]*models.Offer, error) {
 	offset := (page - 1) * limit
 
 	rows, err := r.db.Query(`
@@ -57,6 +65,7 @@ func (r *OfferRepository) List(page, limit int) ([]*models.Offer, error) {
 		LIMIT $1 OFFSET $2
 	`, limit, offset)
 	if err != nil {
+		r.log.Error(ctx, "failed to get offers", zap.Error(err))
 		return nil, err
 	}
 	defer rows.Close()
@@ -81,15 +90,17 @@ func (r *OfferRepository) List(page, limit int) ([]*models.Offer, error) {
 			&o.UpdatedAt,
 		)
 		if err != nil {
+			r.log.Error(ctx, "failed to scan offer", zap.Error(err))
 			return nil, err
 		}
 		offers = append(offers, &o)
 	}
 
+	r.log.Info(ctx, "got offers", zap.Int("count", len(offers)))
 	return offers, rows.Err()
 }
 
-func (r *OfferRepository) Create(offer *models.Offer) error {
+func (r *OfferRepository) Create(ctx context.Context, offer *models.Offer) error {
 	now := time.Now()
 	offer.CreatedAt = now
 	offer.UpdatedAt = now
@@ -116,7 +127,7 @@ func (r *OfferRepository) Create(offer *models.Offer) error {
 	).Scan(&offer.ID)
 }
 
-func (r *OfferRepository) Update(offer *models.Offer) error {
+func (r *OfferRepository) Update(ctx context.Context, offer *models.Offer) error {
 	offer.UpdatedAt = time.Now()
 
 	_, err := r.db.Exec(`
@@ -135,21 +146,30 @@ func (r *OfferRepository) Update(offer *models.Offer) error {
 		offer.UpdatedAt,
 		offer.ID,
 	)
+	if err != nil {
+		r.log.Error(ctx, "failed to update offer", zap.Error(err))
+	}
 	return err
 }
 
-func (r *OfferRepository) Delete(id string) error {
+func (r *OfferRepository) Delete(ctx context.Context, id string) error {
 	_, err := r.db.Exec("DELETE FROM offer WHERE id = $1", id)
+	if err != nil {
+		r.log.Error(ctx, "failed to delete offer", zap.Error(err))
+	}
 	return err
 }
 
-func (r *OfferRepository) CountAll() (int, error) {
+func (r *OfferRepository) CountAll(ctx context.Context) (int, error) {
 	var total int
 	err := r.db.QueryRow("SELECT COUNT(*) FROM offer").Scan(&total)
+	if err != nil {
+		r.log.Error(ctx, "failed to count offers", zap.Error(err))
+	}
 	return total, err
 }
 
-func (r *OfferRepository) ListByUserID(userID string) ([]*models.Offer, error) {
+func (r *OfferRepository) ListByUserID(ctx context.Context, userID string) ([]*models.Offer, error) {
 	rows, err := r.db.Query(`
 		SELECT id, user_id, location_id, category_id, title, description, image, price, area, rooms, address, offer_type, created_at, updated_at
 		FROM offer
@@ -157,6 +177,7 @@ func (r *OfferRepository) ListByUserID(userID string) ([]*models.Offer, error) {
 		ORDER BY created_at DESC
 	`, userID)
 	if err != nil {
+		r.log.Error(ctx, "server side error", zap.Error(err))
 		return nil, err
 	}
 	defer rows.Close()
@@ -181,10 +202,12 @@ func (r *OfferRepository) ListByUserID(userID string) ([]*models.Offer, error) {
 			&o.UpdatedAt,
 		)
 		if err != nil {
+			r.log.Error(ctx, "failed to scan offer", zap.Error(err))
 			return nil, err
 		}
 		offers = append(offers, &o)
 	}
 
+	r.log.Info(ctx, "offers found", zap.Int("count", len(offers)))
 	return offers, rows.Err()
 }
