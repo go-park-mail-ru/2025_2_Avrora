@@ -12,7 +12,8 @@ type Logger struct {
 }
 
 func New(logger *zap.Logger) *Logger {
-	return &Logger{Logger: logger}
+	skippedLogger := logger.WithOptions(zap.AddCallerSkip(1)) // Иначе caller всегда log/log.go:x
+	return &Logger{Logger: skippedLogger}
 }
 
 func (l *Logger) With(fields ...zap.Field) *Logger {

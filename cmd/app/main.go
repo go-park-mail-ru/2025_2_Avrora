@@ -61,8 +61,11 @@ func main() {
 
 	mux.Handle("/api/v1/image/", http.StripPrefix("/api/v1/image/", http.FileServer(http.Dir("image/"))))
 
-	handler := middleware.LoggerMiddleware(appLogger.Logger)(mux)
+	var handler http.Handler = mux
+
 	handler = middleware.CorsMiddleware(handler, cors_origin)
+	handler = middleware.RequestIDMiddleware(handler)
+	handler = middleware.LoggerMiddleware(appLogger.Logger)(handler)
 
 	appLogger.Logger.Info("starting server", zap.String("port", port))
 	appLogger.Logger.Fatal("server stopped", zap.Error(http.ListenAndServe(":"+port, handler)))

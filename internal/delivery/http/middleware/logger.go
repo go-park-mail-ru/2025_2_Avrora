@@ -16,7 +16,7 @@ func LoggerMiddleware(logger *zap.Logger) func(http.Handler) http.Handler {
 
 			requestID, ok := r.Context().Value(RequestIDKey).(string)
 			if !ok {
-				requestID = "unknown"
+				requestID = generateRequestID()
 			}
 
 			ww := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
