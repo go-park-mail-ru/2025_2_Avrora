@@ -2,8 +2,8 @@ package log
 
 import (
 	"context"
-
-	"github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/middleware"
+	
+	request_id "github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/middleware/request"
 	"go.uber.org/zap"
 )
 
@@ -24,7 +24,7 @@ func (l *Logger) withReqID(ctx context.Context) *zap.Logger {
 	if ctx == nil {
 		return l.Logger
 	}
-	if rid, ok := ctx.Value(middleware.RequestIDKey).(string); ok && rid != "" {
+	if rid, ok := ctx.Value(request_id.RequestIDKey).(string); ok && rid != "" {
 		return l.Logger.With(zap.String("request_id", rid))
 	}
 	return l.Logger

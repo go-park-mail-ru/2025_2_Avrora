@@ -7,6 +7,7 @@ import (
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/db"
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/handlers"
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/middleware"
+	request_id "github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/middleware/request"
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/utils"
 	logger "github.com/go-park-mail-ru/2025_2_Avrora/internal/log"
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/usecase"
@@ -64,8 +65,8 @@ func main() {
 	var handler http.Handler = mux
 
 	handler = middleware.CorsMiddleware(handler, cors_origin)
-	handler = middleware.RequestIDMiddleware(handler)
-	handler = middleware.LoggerMiddleware(appLogger.Logger)(handler)
+	handler = request_id.RequestIDMiddleware(handler)
+	handler = middleware.LoggerMiddleware(appLogger)(handler)
 
 	appLogger.Logger.Info("starting server", zap.String("port", port))
 	appLogger.Logger.Fatal("server stopped", zap.Error(http.ListenAndServe(":"+port, handler)))

@@ -6,17 +6,19 @@ import (
 	"strings"
 	"time"
 
+	request_id "github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/middleware/request"
+	"github.com/go-park-mail-ru/2025_2_Avrora/internal/log"
 	"go.uber.org/zap"
 )
 
-func LoggerMiddleware(logger *zap.Logger) func(http.Handler) http.Handler {
+func LoggerMiddleware(logger *log.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
 
-			requestID, ok := r.Context().Value(RequestIDKey).(string)
+			requestID, ok := r.Context().Value(request_id.RequestIDKey).(string)
 			if !ok {
-				requestID = generateRequestID()
+				requestID = request_id.GenerateRequestID()
 			}
 
 			ww := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
@@ -45,11 +47,11 @@ func LoggerMiddleware(logger *zap.Logger) func(http.Handler) http.Handler {
 
 			switch {
 			case ww.statusCode >= 500:
-				logger.Error("server error", fields...)
+				logger.Error(r.Context(),"server error", fields...)
 			case ww.statusCode >= 400:
-				logger.Warn("client error", fields...)
+				logger.Warn(r.Context(), "client error", fields...)
 			default:
-				logger.Info("request completed", fields...)
+				logger.Info(r.Context(), "request completed", fields...)
 			}
 		})
 	}

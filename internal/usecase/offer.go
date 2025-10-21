@@ -40,22 +40,18 @@ func (uc *offerUsecase) Update(ctx context.Context, offer *domain.Offer) error {
 		uc.log.Error(ctx, "title is empty", zap.Error(ErrInvalidInput))
 		return ErrInvalidInput
 	}
-	uc.log.Info(ctx, "update offer success", zap.String("title", offer.Title))
 	return uc.offerRepo.Update(ctx, offer)
 }
 
 func (uc *offerUsecase) ListByUserID(ctx context.Context, userID string) ([]*domain.Offer, error) {
-	uc.log.Info(ctx, "get offers by user id", zap.String("user_id", userID))
 	return uc.offerRepo.ListByUserID(ctx, userID)
 }
 
 
 func (uc *offerUsecase) CountAll(ctx context.Context, ) (int, error) {
-	uc.log.Info(ctx, "count all offers")
 	return uc.offerRepo.CountAll(ctx)
 }
 
 func (uc *offerUsecase) Delete(ctx context.Context, id string) error {
-	uc.log.Info(ctx, "delete offer", zap.String("id", id))
 	return uc.offerRepo.Delete(ctx, id)
 }

@@ -105,6 +105,8 @@ func (r *OfferRepository) Create(ctx context.Context, offer *models.Offer) error
 	offer.CreatedAt = now
 	offer.UpdatedAt = now
 
+	r.log.Info(ctx, "creating offer", zap.Int("id", offer.ID))
+
 	return r.db.QueryRow(`
 		INSERT INTO offer (id, user_id, location_id, category_id, title, description, image, price, area, rooms, address, offer_type, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
@@ -149,6 +151,9 @@ func (r *OfferRepository) Update(ctx context.Context, offer *models.Offer) error
 	if err != nil {
 		r.log.Error(ctx, "failed to update offer", zap.Error(err))
 	}
+
+	r.log.Info(ctx, "updated offer", zap.Int("id", offer.ID))
+
 	return err
 }
 
@@ -157,6 +162,9 @@ func (r *OfferRepository) Delete(ctx context.Context, id string) error {
 	if err != nil {
 		r.log.Error(ctx, "failed to delete offer", zap.Error(err))
 	}
+
+	r.log.Info(ctx, "deleted offer", zap.String("id", id))
+
 	return err
 }
 
@@ -166,6 +174,9 @@ func (r *OfferRepository) CountAll(ctx context.Context) (int, error) {
 	if err != nil {
 		r.log.Error(ctx, "failed to count offers", zap.Error(err))
 	}
+
+	r.log.Info(ctx, "counted offers", zap.Int("count", total))
+	
 	return total, err
 }
 

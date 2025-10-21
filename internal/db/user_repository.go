@@ -33,7 +33,6 @@ func (r *UserRepository) GetUserByEmail(ctx context.Context, email string) (*dom
 		return &domain.User{}, err
 	}
 
-	r.log.Info(ctx, "user found", zap.Int("user_id", user.ID))
 	return &user, nil
 }
 
@@ -53,7 +52,6 @@ func (r *UserRepository) Create(ctx context.Context, user *domain.User) error {
 		return err
 	}
 
-	r.log.Info(ctx, "user created", zap.Int("user_id", user.ID))
 	return nil
 }
 
@@ -69,6 +67,6 @@ func (r *UserRepository) GetUserByID(ctx context.Context, id string) (*domain.Us
 		r.log.Error(ctx, "failed to get user", zap.String("id", id), zap.Error(err))
 		return &domain.User{}, err
 	}
-	r.log.Info(ctx, "user found", zap.String("id", id))
+	
 	return &user, nil
 }

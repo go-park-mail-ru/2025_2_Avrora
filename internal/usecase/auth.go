@@ -19,17 +19,16 @@ var (
 func (uc *authUsecase) Register(ctx context.Context, email, password string) error {
 	_, err := uc.userRepo.GetUserByEmail(ctx, email)
 	if err == nil {
-		uc.log.Error(ctx, "user already exists", zap.Error(err))
+		uc.log.Error(ctx, "user already exists", zap.String("email", email))
 		return ErrUserAlreadyExists
 	}
 	if !errors.Is(err, domain.ErrUserNotFound) {
-		uc.log.Error(ctx, "server side error", zap.Error(err))
 		return err
 	}
 
 	hashed, err := uc.passwordHasher.Hash(password)
 	if err != nil {
-		uc.log.Error(ctx, "server side error", zap.Error(err))
+		uc.log.Error(ctx, "failed to hash password", zap.Error(err))
 		return err
 	}
 
@@ -38,7 +37,6 @@ func (uc *authUsecase) Register(ctx context.Context, email, password string) err
 		Password:  hashed,
 	}
 
-	uc.log.Info(ctx, "successfull sign up", zap.String("email", email))
 	return uc.userRepo.Create(ctx, &user)
 }
 
@@ -46,10 +44,8 @@ func (uc *authUsecase) Login(ctx context.Context, email, password string) (strin
 	user, err := uc.userRepo.GetUserByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, domain.ErrUserNotFound) {
-			uc.log.Error(ctx, "user not found", zap.Error(err))
 			return "", ErrInvalidCredentials
 		}
-		uc.log.Error(ctx, "server side error", zap.Error(err))
 		return "", err
 	}
 
@@ -58,17 +54,15 @@ func (uc *authUsecase) Login(ctx context.Context, email, password string) (strin
 		return "", ErrInvalidCredentials
 	}
 
-	uc.log.Info(ctx, "successfull login", zap.String("email", email))
 	return uc.jwtService.GenerateJWT(strconv.Itoa(user.ID))
 }
 
 func (uc *authUsecase) Logout(ctx context.Context) (string, error) {
 	expiredToken, err := uc.jwtService.GenerateExpiredJWT()
 	if err != nil {
-		uc.log.Error(ctx, "server side error", zap.Error(err))
+		uc.log.Error(ctx, "failed to generate expired token", zap.Error(err))
 		return "", err
 	}
 
-	uc.log.Info(ctx, "successfull logout")
 	return expiredToken, nil
 }
