@@ -135,7 +135,7 @@ CREATE TRIGGER set_updated_at_photo
     BEFORE UPDATE ON photo 
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TABLE review (
+/*CREATE TABLE review (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     offer_id UUID NOT NULL REFERENCES offer(id) ON DELETE CASCADE,
@@ -147,3 +147,4 @@ CREATE TABLE review (
 CREATE TRIGGER set_updated_at_review 
     BEFORE UPDATE ON review 
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+ */
