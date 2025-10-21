@@ -11,6 +11,7 @@ $$ language 'plpgsql';
 CREATE TYPE offer_type_enum AS ENUM ('sale', 'rent');
 CREATE TYPE offer_status_enum AS ENUM ('active', 'sold', 'archived');
 CREATE TYPE user_role_enum AS ENUM ('user', 'owner', 'realtor');
+CREATE TYPE property_type_enum AS ENUM('house', 'apartment');
 
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -122,11 +123,12 @@ CREATE TABLE offer (
     price BIGINT NOT NULL CHECK (price >= 0),
     area DECIMAL(10,2) NOT NULL CHECK (area > 0),
     rooms INT NOT NULL CHECK (rooms >= 0),
+    propert_type property_type_enum NOT NULL,
     offer_type offer_type_enum NOT NULL,
     status offer_status_enum NOT NULL DEFAULT 'active',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    image TEXT NOT NULL,
+    image_urls TEXT[] NOT NULL,
     floor INT CHECK (floor >= 0),
     total_floors INT CHECK (total_floors >= 0),
     deposit BIGINT CHECK (deposit >= 0),
