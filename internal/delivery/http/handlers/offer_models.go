@@ -62,6 +62,7 @@ type OfferInFeedResponse struct {
 }
 
 type UpdateOfferRequest struct {
+	ID               int      `json:"id"`
 	InHousingComplex bool     `json:"in_housing_complex"`
 	HousingComplex   string   `json:"housing_complex"`
 	OfferType        string   `json:"offer_type"`    // sale | rent
