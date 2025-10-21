@@ -26,7 +26,6 @@ func (r *UserRepository) GetUserByEmail(ctx context.Context, email string) (*dom
 		Scan(&user.ID, &user.Email, &user.Password, &user.CreatedAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			r.log.Error(ctx, "user not found", zap.String("email", email))
 			return &domain.User{}, domain.ErrUserNotFound
 		}
 		r.log.Error(ctx, "failed to get user", zap.String("email", email), zap.Error(err))
@@ -67,6 +66,6 @@ func (r *UserRepository) GetUserByID(ctx context.Context, id string) (*domain.Us
 		r.log.Error(ctx, "failed to get user", zap.String("id", id), zap.Error(err))
 		return &domain.User{}, err
 	}
-	
+
 	return &user, nil
 }

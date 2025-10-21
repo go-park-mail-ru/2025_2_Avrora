@@ -44,6 +44,7 @@ func (uc *authUsecase) Login(ctx context.Context, email, password string) (strin
 	user, err := uc.userRepo.GetUserByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, domain.ErrUserNotFound) {
+			uc.log.Error(ctx, "user not found", zap.String("email", email))
 			return "", ErrInvalidCredentials
 		}
 		return "", err
