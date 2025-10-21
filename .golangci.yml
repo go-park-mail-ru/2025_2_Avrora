@@ -1,26 +1,80 @@
+version: "2"
+
 run:
-  timeout: 5m # Timeout for the entire run
-  skip-dirs:
-    - vendor # Skip the vendor directory
+  timeout: 5m
+  go: '1.25'
 
 linters:
+  default: none
   enable:
-    - errcheck       # Checks for unhandled errors
-    - goconst        # Detects repeated strings
-    - gocyclo        # Reports high cyclomatic complexity
-    - gofmt          # Checks if code is formatted with gofmt
-    - goimports      # Checks missing or unused imports
-    - ineffassign    # Detects ineffectual assignments
-    - staticcheck    # Performs advanced static analysis
-    - unused         # Finds unused variables and constants
+    - errcheck
+    - errorlint
+    - nilerr
+    - nilnesserr
+    - wrapcheck
+    - contextcheck
+    - noctx
+    - rowserrcheck
+    - sqlclosecheck
+    - bodyclose
+    - gosec
+    - staticcheck
+    - unused
+    - ineffassign
+    - unconvert
+    - makezero
+    - musttag
+    - revive
+    - depguard
+    - importas
+    - paralleltest
+    - testifylint
+    - misspell
+    - whitespace
+    - copyloopvar
 
-  disable:
-    - maligned       # Disable specific linters if needed
+formatters:
+  enable:
+    - gofmt
+
+linters-settings:
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+
+  gosec:
+    excludes:
+      - G404
+
+  depguard:
+    rules:
+      main:
+        allow:
+          - $gostd
+          - github.com/golang-jwt/jwt/v5
+          - github.com/golang-migrate/migrate/v4
+          - github.com/go-park-mail-ru/2025_2_Avrora/internal/...
+          - go.uber.org/zap
+          - github.com/jackc/pgx/v5
+          - github.com/jackc/pgx/v5/stdlib
+          - github.com/google/uuid
+          - golang.org/x/crypto/bcrypt
+
+  revive:
+    rules:
+      - name: var-naming
+
+  wrapcheck:
+    ignore-interface-regexps:
+      - '^(?i)c(?-i)ach(ing|e)'
 
 issues:
-  exclude-use-default: false # Do not use default exclusions
-  max-per-linter: 0          # No limit on issues per linter
-  max-same-issues: 0         # No limit on duplicate issues
+  max-same-issues: 0
+  max-per-linter: 0
+  uniq-by-line: true
 
 output:
-  format: colored-line-number # Output format
+  formats:
+    text:
+      path: stdout
+      colors: true

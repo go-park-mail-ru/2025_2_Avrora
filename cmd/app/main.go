@@ -32,7 +32,7 @@ func main() {
 	if err != nil {
 		log.Fatal("failed to connect to database: ", zap.Error(err))
 	}
-	hasher, err := utils.NewPasswordHasher("some")
+	hasher, err := utils.NewPasswordHasher(os.Getenv("PASSWORD_PEPPER"))
 	if err != nil {
 		log.Fatal("failed to create password hasher: ", zap.Error(err))
 	}
