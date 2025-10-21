@@ -53,17 +53,19 @@ func main() {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/api/v1/register", authHandler.Register)
-
 	mux.HandleFunc("/api/v1/login", authHandler.Login)
-
 	mux.HandleFunc("/api/v1/logout", authHandler.Logout)
 
-	mux.HandleFunc("/api/v1/offers", offerHandler.GetOffers)
+	protectedMux := http.NewServeMux()
+	protectedMux.HandleFunc("/api/v1/offers", offerHandler.GetOffers)
+	protectedMux.Handle("/api/v1/image/", http.StripPrefix("/api/v1/image/", http.FileServer(http.Dir("image/"))))
 
-	mux.Handle("/api/v1/image/", http.StripPrefix("/api/v1/image/", http.FileServer(http.Dir("image/"))))
+	protectedHandler := middleware.AuthMiddleware(appLogger, jwtService)(protectedMux)
+
+	mux.Handle("/api/v1/offers", protectedHandler)
+	mux.Handle("/api/v1/image/", protectedHandler)
 
 	var handler http.Handler = mux
-
 	handler = middleware.CorsMiddleware(handler, cors_origin)
 	handler = request_id.RequestIDMiddleware(handler)
 	handler = middleware.LoggerMiddleware(appLogger)(handler)
