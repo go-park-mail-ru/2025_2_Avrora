@@ -11,6 +11,8 @@ type Offer struct {
 	HousingComplex   string
 	OfferType        string
 	PropertyType     string
+	Title            string
+	UserID           int
 	Category         string
 	Address          string
 	Floor            int

@@ -51,7 +51,7 @@ func (o *offerHandler) CreateOffer(w http.ResponseWriter, r *http.Request) {
 		UserID:      userId,
 		Title:       req.Title,
 		Description: req.Description,
-		Image:       req.Image,
+		ImageURLs:   req.,
 		Price:       req.Price,
 		Area:        req.Area,
 		Rooms:       req.Rooms,
