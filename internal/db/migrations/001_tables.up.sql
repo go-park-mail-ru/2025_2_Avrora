@@ -146,7 +146,7 @@ CREATE TABLE photo (
     offer_id UUID NOT NULL REFERENCES offer(id) ON DELETE CASCADE,
     url TEXT NOT NULL 
         CHECK (LENGTH(url) <= 1024)
-        CHECK (url ~ '^https?://[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(/.*)?$'),
+        CHECK (url ~ '/^[\w.-]+(\.[\w]{2,}){1,2}(\/.*)?$/'),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
