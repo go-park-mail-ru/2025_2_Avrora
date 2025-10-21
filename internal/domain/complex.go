@@ -1,5 +1,7 @@
 package domain
 
+import "time"
+
 type Complex struct {
 	ID            int
 	Description   string
@@ -10,6 +12,8 @@ type Complex struct {
 	BuiltYear     int
 	ImageURL      []string
 	StartingPrice float64
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
 
 // комплекс в ленте
@@ -20,7 +24,10 @@ type ComplexInFeed struct {
 	Address       string
 	Metro         string
 	ImageURL      string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
+
 type ComplexesInFeed struct {
 	Complexes []ComplexInFeed
 }

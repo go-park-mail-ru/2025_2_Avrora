@@ -6,20 +6,27 @@ import (
 )
 
 type Offer struct {
-	ID          int
-	UserID      int
-	LocationID  int
-	CategoryID  int
-	Title       string
-	Description string
-	Image       string
-	Price       int
-	Area        float64
-	Rooms       int
-	Address     string
-	OfferType   string
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID               int
+	InHousingComplex bool
+	HousingComplex   string
+	OfferType        string
+	PropertyType     string
+	Category         string
+	Address          string
+	Floor            int
+	TotalFloors      int
+	Rooms            int
+	Area             float64
+	LivingArea       float64
+	KitchenArea      float64
+	Price            float64
+	Description      string
+	Deposit          float64
+	Commission       float64
+	RentalPeriod     string
+	ImageURLs        []string
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 }
 
 // Офферы
@@ -28,7 +35,7 @@ type OfferInFeed struct {
 	UserID       int
 	OfferURL     string
 	OfferType    string // sale | rent
-	PropertyType string // flat | house
+	PropertyType string // house | apartment
 	Price        float64
 	Area         float64
 	Rooms        int
@@ -37,6 +44,8 @@ type OfferInFeed struct {
 	Address      string
 	Metro        string
 	ImageURL     string
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }
 
 // Оффер в нлентеx
