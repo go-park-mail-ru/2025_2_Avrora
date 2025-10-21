@@ -23,7 +23,12 @@ CREATE TABLE users (
         CHECK (avatar_url IS NULL OR avatar_url ~ '^https?://[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(/.*)?$'),
     role user_role_enum NOT NULL DEFAULT 'user',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    first_name TEXT CHECK (LENGTH(first_name) <= 100),
+    last_name TEXT CHECK (LENGTH(last_name) <= 100),
+    phone TEXT CHECK (LENGTH(phone) <= 20),
+    photo_url TEXT
+
 );
 CREATE TRIGGER set_updated_at_users 
     BEFORE UPDATE ON users 
@@ -75,7 +80,11 @@ CREATE TABLE housing_complex (
     latitude DECIMAL(10,8) CHECK (latitude BETWEEN -90 AND 90),
     longitude DECIMAL(11,8) CHECK (longitude BETWEEN -180 AND 180),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    developer TEXT CHECK (LENGTH(developer) <= 255),
+    address TEXT CHECK (LENGTH(address) <= 255),
+    starting_price BIGINT CHECK (starting_price >= 0),
+    image_urls TEXT[]
 );
 CREATE TRIGGER set_updated_at_housing_complex 
     BEFORE UPDATE ON housing_complex 
@@ -116,7 +125,15 @@ CREATE TABLE offer (
     offer_type offer_type_enum NOT NULL,
     status offer_status_enum NOT NULL DEFAULT 'active',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    image TEXT NOT NULL,
+    floor INT CHECK (floor >= 0),
+    total_floors INT CHECK (total_floors >= 0),
+    deposit BIGINT CHECK (deposit >= 0),
+    commission BIGINT CHECK (commission >= 0),
+    rental_period TEXT CHECK (LENGTH(rental_period) <= 100),
+    living_area  DECIMAL(10,2)  CHECK (living_area >= 0),
+    kitchen_area  DECIMAL(10,2) CHECK (kitchen_area >= 0)
 );
 CREATE TRIGGER set_updated_at_offer 
     BEFORE UPDATE ON offer 
@@ -134,7 +151,7 @@ CREATE TABLE photo (
 CREATE TRIGGER set_updated_at_photo 
     BEFORE UPDATE ON photo 
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
+--Заготовка на будущее
 /*CREATE TABLE review (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
