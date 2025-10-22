@@ -7,32 +7,37 @@ import (
 
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/response"
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/usecase"
+	"go.uber.org/zap"
 )
 
 func (h *authHandler) Register(w http.ResponseWriter, r *http.Request) {
 	var req RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.logger.Error(r.Context(), "invalid JSON", zap.Error(err))
 		response.HandleError(w, err, http.StatusBadRequest, "invalid JSON")
+		return
 	}
 	
 	if err := validateRegisterRequest(&req); err != nil {
+		h.logger.Error(r.Context(), "invalid input", zap.Error(err))
 		response.HandleError(w, err, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	if err := h.authUsecase.Register(req.Email, req.Password); err != nil {
+	if err := h.authUsecase.Register(r.Context(), req.Email, req.Password); err != nil {
 		switch {
 		case errors.Is(err, usecase.ErrUserAlreadyExists):
 			response.HandleError(w, err, http.StatusConflict, usecase.ErrUserAlreadyExists.Error())
+			return
 		case errors.Is(err, usecase.ErrInvalidInput):
 			response.HandleError(w, err, http.StatusBadRequest, usecase.ErrInvalidInput.Error())
+			return
 		default:
 			response.HandleError(w, err, http.StatusInternalServerError, usecase.ErrServerSideError.Error())
 		}
 		return
 	}
 
-	
 	response.WriteJSON(w, http.StatusCreated, RegisterResponse{
 		Email: req.Email,
 	})
@@ -41,15 +46,17 @@ func (h *authHandler) Register(w http.ResponseWriter, r *http.Request) {
 func (h *authHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.logger.Error(r.Context(), "invalid JSON", zap.Error(err))
 		response.HandleError(w, ErrInvalidJSON, http.StatusBadRequest, ErrInvalidJSON.Error())
 	}
 
 	if err := validateLoginRequest(&req); err != nil {
+		h.logger.Error(r.Context(), "invalid input", zap.Error(err))
 		response.HandleError(w, err, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	token, err := h.authUsecase.Login(req.Email, req.Password)
+	token, err := h.authUsecase.Login(r.Context(), req.Email, req.Password)
 	if err != nil {
 		switch {
 		case errors.Is(err, usecase.ErrInvalidCredentials):
@@ -69,7 +76,7 @@ func (h *authHandler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *authHandler) Logout(w http.ResponseWriter, r *http.Request) {
-	expiredToken, err := h.authUsecase.Logout()
+	expiredToken, err := h.authUsecase.Logout(r.Context())
 	if err != nil {
 		response.HandleError(w, err, http.StatusInternalServerError, "ошибка генерации jwt")
 	}

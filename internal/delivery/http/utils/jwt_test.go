@@ -22,9 +22,6 @@ func TestNewJwtGenerator_EmptySecret(t *testing.T) {
 	NewJwtGenerator("")
 }
 
-// -------------------
-// Тест генерации и проверки токена
-// -------------------
 func TestGenerateAndValidateJWT(t *testing.T) {
 	j := NewJwtGenerator("test_secret")
 

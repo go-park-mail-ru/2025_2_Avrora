@@ -9,20 +9,23 @@ import (
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/response"
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/domain"
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/usecase"
+	"go.uber.org/zap"
 )
 
 func (o *offerHandler) GetOffers(w http.ResponseWriter, r *http.Request) {
 	page, err := parseIntQueryParam(r, "page", 1)
 	if err != nil {
+		o.logger.Error(r.Context(), "invalid or no page", zap.Error(err))
 		response.HandleError(w, err, http.StatusInternalServerError, "ошибка получения предложений")
 		return
 	}
 	limit, err := parseIntQueryParam(r, "limit", 10)
 	if err != nil {
+		o.logger.Error(r.Context(), "invalid or no limit", zap.Error(err))
 		response.HandleError(w, err, http.StatusInternalServerError, "ошибка получения предложений")
 		return
 	}
-	result, err := o.offerUsecase.List(page, limit)
+	result, err := o.offerUsecase.List(r.Context(),page, limit)
 	if err != nil {
 		response.HandleError(w, err, http.StatusInternalServerError, "ошибка получения предложений")
 		return
@@ -33,18 +36,21 @@ func (o *offerHandler) GetOffers(w http.ResponseWriter, r *http.Request) {
 func (o *offerHandler) CreateOffer(w http.ResponseWriter, r *http.Request) {
 	var req CreateOfferRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		o.logger.Error(r.Context(), "invalid JSON", zap.Error(err))
 		response.HandleError(w, err, http.StatusBadRequest, "ошибка создания предложения")
 		return
 	}
 
 	userID, ok := r.Context().Value("userID").(string)
 	if !ok || userID == "" {
+		o.logger.Error(r.Context(), "no userID")
 		response.HandleError(w, nil, http.StatusUnauthorized, "требуется авторизация")
 		return
 	}
 
 	userId, err := strconv.Atoi(userID)
 	if err != nil {
+		o.logger.Error(r.Context(), "invalid user id", zap.Error(err))
 		response.HandleError(w, err, http.StatusInternalServerError, "ошибка пользовательского характера")
 	}
 	offer := domain.Offer{
@@ -59,7 +65,7 @@ func (o *offerHandler) CreateOffer(w http.ResponseWriter, r *http.Request) {
 		OfferType:   req.OfferType,
 	}
 
-	if err := o.offerUsecase.Create(&offer); err != nil {
+	if err := o.offerUsecase.Create(r.Context(), &offer); err != nil {
 		if errors.Is(err, usecase.ErrInvalidInput) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		} else {
@@ -76,10 +82,11 @@ func (o *offerHandler) CreateOffer(w http.ResponseWriter, r *http.Request) {
 func (o *offerHandler) DeleteOffer(w http.ResponseWriter, r *http.Request) {
 	req, err := parseIntQueryParam(r, "id", 0)
 	if err != nil {
+		o.logger.Error(r.Context(), "invalid or no id", zap.Error(err))
 		response.HandleError(w, err, http.StatusInternalServerError, "ошибка получения параметра")
 		return
 	}
-	if err := o.offerUsecase.Delete(strconv.Itoa(req)); err != nil {
+	if err := o.offerUsecase.Delete(r.Context(), strconv.Itoa(req)); err != nil {
 		response.HandleError(w, err, http.StatusInternalServerError, "ошибка удаления предложения")
 		return
 	}
@@ -89,6 +96,7 @@ func (o *offerHandler) DeleteOffer(w http.ResponseWriter, r *http.Request) {
 func (o *offerHandler) UpdateOffer(w http.ResponseWriter, r *http.Request) {
 	var req UpdateOfferRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		o.logger.Error(r.Context(), "invalid JSON", zap.Error(err))
 		response.HandleError(w, err, http.StatusBadRequest, "ошибка обработки входных данных")
 		return
 	}
@@ -104,7 +112,7 @@ func (o *offerHandler) UpdateOffer(w http.ResponseWriter, r *http.Request) {
 		Address:     req.Address,
 		OfferType:   req.OfferType,
 	}
-	if err := o.offerUsecase.Update(&offer); err != nil {
+	if err := o.offerUsecase.Update(r.Context(), &offer); err != nil {
 		response.HandleError(w, err, http.StatusInternalServerError, "ошибка обновления предложения")
 		return
 	}

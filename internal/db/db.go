@@ -44,8 +44,8 @@ func getMigrationsPath() string {
 	candidates := []string{
 		filepath.Join(wd, "internal", "db", "migrations"),
 		filepath.Join(wd, "db", "migrations"),            
-		filepath.Join(wd, "..", "internal", "infrastructure", "db", "migrations"),     
-		filepath.Join(wd, "..", "..", "internal", "infrastructure", "db", "migrations"),
+		filepath.Join(wd, "..", "internal", "db", "migrations"),     
+		filepath.Join(wd, "..", "..", "internal", "db", "migrations"),
 	}
 
 	for _, path := range candidates {
