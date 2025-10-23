@@ -9,12 +9,12 @@ import (
 
 
 type IOfferUsecase interface {
-	List(ctx context.Context, page, limit int) ([]*domain.Offer, error)
-	GetByID(ctx context.Context, id string) (*domain.Offer, error)
+	ListOffersInFeed(ctx context.Context, page, limit int) (*domain.OffersInFeed, error)
+	Get(ctx context.Context, id string) (*domain.Offer, error)
 	Update(ctx context.Context, offer *domain.Offer) error
 	Create(ctx context.Context, offer *domain.Offer) error
 	Delete(ctx context.Context, id string) error
-	ListByUserID(ctx context.Context, userID string) ([]*domain.Offer, error)
+	ListOffersInFeedByUserID(ctx context.Context, userID string, page, limit int) (*domain.OffersInFeed, error)
 }
 
 type offerHandler struct {

@@ -1,30 +1,37 @@
 package domain
 
-import "time"
+import (
+	"errors"
+	"time"
+)
 
-// Профиль
-type ProfileInfo struct {
-	ID        int
-	UserID    int // связываем пользователя с профилем
+type Profile struct {
+	ID        string
+	UserID    string
 	FirstName string
 	LastName  string
-	Email     string
 	Phone     string
-	PhotoURL  string
+	Role      UserRole
+	Email     string
+	AvatarURL string
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
 
-// Обновляем данные профиля
 type ProfileUpdate struct {
+	ID        string
 	FirstName string
 	LastName  string
 	Phone     string
-	Photo     []byte
+	Role      UserRole
+	AvatarURL string
 }
 
-// Смена пароля
 type ProfileSecurityUpdate struct {
 	OldPassword string
 	NewPassword string
 }
+
+var (
+	ErrProfileNotFound = errors.New("profile not found")
+)

@@ -41,24 +41,43 @@ func main() {
 	// Repository layer
 	userRepo := db.NewUserRepository(dbConn.GetDB(), repoLogger)
 	offerRepo := db.NewOfferRepository(dbConn.GetDB(), repoLogger)
+	profileRepo := db.NewProfileRepository(dbConn.GetDB(), repoLogger)
 
 	// Usecase layer
 	authUC := usecase.NewAuthUsecase(userRepo, hasher, jwtService, usecaseLogger)
 	offerUC := usecase.NewOfferUsecase(offerRepo, usecaseLogger)
+	profileUC := usecase.NewProfileUsecase(profileRepo, hasher, usecaseLogger)
 
 	// Handlers
 	authHandler := handlers.NewAuthHandler(authUC, httpLogger)
 	offerHandler := handlers.NewOfferHandler(offerUC, httpLogger)
+	profileHandler := handlers.NewProfileHandler(profileUC, httpLogger)
 
 	mux := http.NewServeMux()
 
+	// Auth
 	mux.HandleFunc("/api/v1/register", authHandler.Register)
 	mux.HandleFunc("/api/v1/login", authHandler.Login)
 	mux.HandleFunc("/api/v1/logout", authHandler.Logout)
 
+	//Profile
+	mux.HandleFunc("/api/v1/profile/", profileHandler.GetProfile)
+	mux.HandleFunc("/api/v1/profile/update/", profileHandler.UpdateProfile)
+	mux.HandleFunc("/api/v1/profile/security", profileHandler.UpdateProfileSecurityByID)
+	mux.HandleFunc("/api/v1/profile/email", profileHandler.UpdateEmail)
+
 	protectedMux := http.NewServeMux()
+
+	//Offers
 	protectedMux.HandleFunc("/api/v1/offers", offerHandler.GetOffers)
+	protectedMux.HandleFunc("/api/v1/offers/create", offerHandler.CreateOffer)
+	protectedMux.HandleFunc("/api/v1/offers/:id", offerHandler.GetOffer)
+	protectedMux.HandleFunc("/api/v1/offers/delete/:id", offerHandler.DeleteOffer)
+	protectedMux.HandleFunc("/api/v1/offers/update/:id", offerHandler.UpdateOffer)
+
+	//Images
 	protectedMux.Handle("/api/v1/image/", http.StripPrefix("/api/v1/image/", http.FileServer(http.Dir("image/"))))
+
 
 	protectedHandler := middleware.AuthMiddleware(appLogger, jwtService)(protectedMux)
 

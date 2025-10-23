@@ -71,6 +71,7 @@ type UpdateOfferRequest struct {
 	UserID           int      `json:"user_id"`
 	Category         string   `json:"category"`
 	Address          string   `json:"address"`
+	Status           string   `json:"status"`
 	Floor            int      `json:"floor"`
 	TotalFloors      int      `json:"total_floors"`
 	Rooms            int      `json:"rooms"`
@@ -79,8 +80,8 @@ type UpdateOfferRequest struct {
 	KitchenArea      float64  `json:"kitchen_area"`
 	Price            float64  `json:"price"`
 	Description      string   `json:"description"`
-	Deposit          float64  `json:"deposit"`
-	Commission       float64  `json:"commission"`
+	Deposit          int64    `json:"deposit"`
+	Commission       int64    `json:"commission"`
 	RentalPeriod     string   `json:"rental_period"`
 	ImageURLs        []string `json:"image_urls"`
 }
