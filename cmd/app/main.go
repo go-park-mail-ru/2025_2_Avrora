@@ -76,7 +76,7 @@ func main() {
 	protectedMux.HandleFunc("/api/v1/offers/update/", offerHandler.UpdateOffer)
 
 	// Images
-	imageHandler := handlers.NewImageHandler(log, "http://localhost:8080", "./image")
+	imageHandler := handlers.NewImageHandler(usecaseLogger, "http://localhost:8080", "./image")
 
 	// Upload — через auth
 	protectedMux.HandleFunc("/api/v1/image/upload", imageHandler.UploadImage)
