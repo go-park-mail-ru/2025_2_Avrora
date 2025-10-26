@@ -11,7 +11,7 @@ type Profile struct {
 	FirstName string
 	LastName  string
 	Phone     string
-	Role      UserRole
+	Role      string
 	Email     string
 	AvatarURL string
 	CreatedAt time.Time
@@ -23,7 +23,7 @@ type ProfileUpdate struct {
 	FirstName string
 	LastName  string
 	Phone     string
-	Role      UserRole
+	Role      string
 	AvatarURL string
 }
 

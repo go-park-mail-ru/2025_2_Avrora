@@ -21,27 +21,34 @@ const (
 		SELECT ` + selectProfileWithUser + `
 		FROM profile p
 		JOIN users u ON p.user_id = u.id
-		WHERE p.user_id = $1`
+		WHERE p.user_id = '$1'`
 
 	getUserAndProfileLeftJoinQuery = `
 		SELECT 
-			p.id, p.user_id, p.first_name, p.last_name, p.phone, p.avatar_url,
-			p.created_at, p.updated_at,
-			u.email
+			p.id,
+			u.id AS user_id,          
+			p.first_name,
+			p.last_name,
+			p.phone,
+			p.avatar_url,
+			p.created_at,
+			p.updated_at,
+			u.email,
+			u.role                  
 		FROM users u
 		LEFT JOIN profile p ON u.id = p.user_id
 		WHERE u.id = $1`
 
-	upsertProfileQuery = `
+	updateProfileQuery = `
 		INSERT INTO profile (user_id, first_name, last_name, phone, avatar_url, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $6)
+		VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
 		ON CONFLICT (user_id) 
 		DO UPDATE SET
 			first_name = EXCLUDED.first_name,
 			last_name = EXCLUDED.last_name,
 			phone = EXCLUDED.phone,
 			avatar_url = EXCLUDED.avatar_url,
-			updated_at = EXCLUDED.updated_at`
+			updated_at = NOW();`
 
 	updateUserPasswordHashQuery = `
 		UPDATE users
@@ -60,7 +67,7 @@ func NewProfileRepository(db *sql.DB, log *log.Logger) *ProfileRepository {
 
 func (r *ProfileRepository) GetByUserID(ctx context.Context, userID string) (*domain.Profile, string, error) {
 	var p domain.Profile
-	var email string
+	var email, role string
 	var id, userIDFromDB, firstName, lastName, phone, avatarURL *string
 	var createdAt, updatedAt *time.Time
 
@@ -74,7 +81,9 @@ func (r *ProfileRepository) GetByUserID(ctx context.Context, userID string) (*do
 		&createdAt,
 		&updatedAt,
 		&email,
+		&role,
 	)
+
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, "", domain.ErrProfileNotFound // or domain.ErrUserNotFound?
@@ -84,12 +93,14 @@ func (r *ProfileRepository) GetByUserID(ctx context.Context, userID string) (*do
 	}
 
 	p = domain.Profile{
-		ID:        safeStringDeref(id),
-		UserID:    safeStringDeref(userIDFromDB),
-		FirstName: safeStringDeref(firstName),
-		LastName:  safeStringDeref(lastName),
-		Phone:     safeStringDeref(phone),
-		AvatarURL: safeStringDeref(avatarURL),
+		ID:        SafeStringDeref(id),
+		UserID:    SafeStringDeref(userIDFromDB),
+		FirstName: SafeStringDeref(firstName),
+		LastName:  SafeStringDeref(lastName),
+		Phone:     SafeStringDeref(phone),
+		AvatarURL: SafeStringDeref(avatarURL),
+		Role:      role,
+		Email:     email,
 	}
 	if createdAt != nil {
 		p.CreatedAt = *createdAt
@@ -106,14 +117,12 @@ func (r *ProfileRepository) Update(ctx context.Context, userID string, upd *doma
 		return nil
 	}
 
-	now := time.Now().UTC()
-	_, err := r.db.ExecContext(ctx, upsertProfileQuery,
+	_, err := r.db.ExecContext(ctx, updateProfileQuery,
 		userID,
 		upd.FirstName,
 		upd.LastName,
 		upd.Phone,
 		upd.AvatarURL,
-		now,
 	)
 	if err != nil {
 		r.log.Error(ctx, "failed to upsert profile", zap.String("user_id", userID), zap.Error(err))
@@ -157,7 +166,7 @@ func (r *ProfileRepository) GetUserByUserID(ctx context.Context, userID string) 
 	return &user, nil
 }
 
-func safeStringDeref(s *string) string {
+func SafeStringDeref(s *string) string {
 	if s == nil {
 		return ""
 	}

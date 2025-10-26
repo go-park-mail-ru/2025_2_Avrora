@@ -6,7 +6,6 @@ import (
 
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/response"
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/domain"
-	"github.com/gorilla/mux"
 	"go.uber.org/zap"
 )
 
@@ -40,16 +39,17 @@ func (p *profileHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := p.profileUsecase.UpdateProfile(r.Context(), id, &domain.ProfileUpdate{
-		FirstName: req.FirstName,
-		LastName:  req.LastName,
-		Phone:     req.Phone,
-		Role:      domain.UserRole(req.Role),
-		AvatarURL: req.AvatarURL,
+		FirstName: SafeStringDeref(req.FirstName),
+		LastName:  SafeStringDeref(req.LastName),
+		Phone:     SafeStringDeref(req.Phone),
+		Role:      SafeStringDeref(req.Role),
+		AvatarURL: SafeStringDeref(req.AvatarURL),
 	}); err != nil {
 		response.HandleError(w, err, http.StatusInternalServerError, "ошибка обновления профиля")
 		return
 	}
-	w.WriteHeader(http.StatusOK)
+
+	response.WriteJSON(w, http.StatusOK, nil)
 }
 
 func (p *profileHandler) UpdateProfileSecurityByID(w http.ResponseWriter, r *http.Request) {
@@ -67,10 +67,10 @@ func (p *profileHandler) UpdateProfileSecurityByID(w http.ResponseWriter, r *htt
 	}
 
 	if err := p.profileUsecase.UpdateProfileSecurityByID(r.Context(), id, req.OldPassword, req.NewPassword); err != nil {
-		response.HandleError(w, err, http.StatusInternalServerError, "ошибка обновления профиля")
+		response.HandleError(w, err, http.StatusBadRequest, err.Error())
 		return
 	}
-	w.WriteHeader(http.StatusOK)
+	response.WriteJSON(w, http.StatusOK, nil)
 }
 
 func (p *profileHandler) UpdateEmail(w http.ResponseWriter, r *http.Request) {
@@ -81,12 +81,23 @@ func (p *profileHandler) UpdateEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	vars := mux.Vars(r)
-	id := vars["user_id"]
+	id := GetPathParameter(r, "/api/v1/profile/email/"); if id == "" {
+		p.log.Error(r.Context(), "invalid or no id")
+		response.HandleError(w, nil, http.StatusInternalServerError, "ошибка получения параметра")
+		return
+	}
 
 	if err := p.profileUsecase.UpdateEmail(r.Context(), id, req.Email); err != nil {
 		response.HandleError(w, err, http.StatusInternalServerError, "ошибка обновления профиля")
 		return
 	}
-	w.WriteHeader(http.StatusOK)
+
+	response.WriteJSON(w, http.StatusOK, nil)
+}
+
+func SafeStringDeref(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }

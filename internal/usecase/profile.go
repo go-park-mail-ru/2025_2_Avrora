@@ -30,6 +30,7 @@ func (uc *profileUsecase) GetProfileByID(ctx context.Context, userID string) (*d
 		UserID:    profile.UserID,
 		FirstName: profile.FirstName,
 		LastName:  profile.LastName,
+		Role:      profile.Role,
 		Email:     email,
 		Phone:     profile.Phone,
 		AvatarURL: profile.AvatarURL,
@@ -70,7 +71,8 @@ func (uc *profileUsecase) UpdateProfileSecurityByID(ctx context.Context, userID 
 		return err
 	}
 
-	if !uc.passwordHasher.Compare(user.PasswordHash, newPassword) {
+	println(oldPassword, newPassword)
+	if !uc.passwordHasher.Compare(user.PasswordHash, oldPassword) {
 		uc.log.Error(ctx, "invalid credentials", zap.Error(err))
 		return ErrInvalidCredentials
 	}

@@ -10,11 +10,11 @@ type Profile struct {
 }
 
 type ProfileUpdate struct {
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
-	AvatarURL string `json:"avatar_url"`
-	Phone     string `json:"phone"`
-	Role      string `json:"role"`
+	FirstName *string `json:"first_name"`
+	LastName  *string `json:"last_name"`
+	AvatarURL *string `json:"avatar_url"`
+	Phone     *string `json:"phone"`
+	Role      *string `json:"role"`
 }
 
 type UpdateEmail struct {
