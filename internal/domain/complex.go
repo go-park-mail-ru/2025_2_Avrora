@@ -31,6 +31,10 @@ type ComplexInFeed struct {
 }
 
 type ComplexesInFeed struct {
+	Meta struct {
+		Total  int
+		Offset int
+	}
 	Complexes []ComplexInFeed
 }
 

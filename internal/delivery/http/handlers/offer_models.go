@@ -6,7 +6,7 @@ type CreateOfferRequest struct {
 	OfferType        string   `json:"offer_type"`    // sale | rent
 	PropertyType     string   `json:"property_type"` // house | apartment
 	Title            string   `json:"title"`
-	UserID           int      `json:"user_id"`
+	UserID           string   `json:"user_id"`
 	Category         string   `json:"category"`
 	Address          string   `json:"address"`
 	Floor            int      `json:"floor"`
@@ -68,10 +68,10 @@ type UpdateOfferRequest struct {
 	OfferType        string   `json:"offer_type"`    // sale | rent
 	PropertyType     string   `json:"property_type"` // house | apartment
 	Title            string   `json:"title"`
-	UserID           int      `json:"user_id"`
+	UserID           string   `json:"user_id"`
 	Category         string   `json:"category"`
 	Address          string   `json:"address"`
-	Status           string   `json:"status"`
+	Status           string   `json:"status"` // active | sold | archived
 	Floor            int      `json:"floor"`
 	TotalFloors      int      `json:"total_floors"`
 	Rooms            int      `json:"rooms"`

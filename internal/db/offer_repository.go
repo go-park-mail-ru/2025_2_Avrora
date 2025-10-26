@@ -121,7 +121,7 @@ const (
 			NOW(),
 			NOW()
 		)
-		RETURNING id, created_at, updated_at
+		RETURNING id
 	`
 
 	updateOfferQuery = `
@@ -131,7 +131,8 @@ const (
 			offer_type = $10, status = $11, floor = $12, total_floors = $13,
 			deposit = $14, commission = $15, rental_period = $16,
 			living_area = $17, kitchen_area = $18, updated_at = $19
-		WHERE id = $20`
+		WHERE id = $20
+	`
 
 	deleteOfferQuery = "DELETE FROM offer WHERE id = $1"
 
@@ -232,12 +233,13 @@ func scanOfferRow(scanner interface {
 	Scan(dest ...any) error
 }) (*domain.Offer, error) {
 	var (
-		housingComplexID *string
-		floor, totalFloors *int
-		deposit, commission *int64
-		rentalPeriod *string
+		housingComplexID        *string
+		floor, totalFloors      *int
+		deposit, commission     *int64
+		rentalPeriod            *string
 		livingArea, kitchenArea *float64
-		offer domain.Offer
+		imageURLs               pq.StringArray
+		offer                   domain.Offer
 	)
 
 	err := scanner.Scan(
@@ -261,12 +263,16 @@ func scanOfferRow(scanner interface {
 		&rentalPeriod,
 		&livingArea,
 		&kitchenArea,
+		&imageURLs,
 		&offer.CreatedAt,
 		&offer.UpdatedAt,
 	)
 	if err != nil {
 		return nil, err
 	}
+
+	offer.ImageURLs = make([]string, len(imageURLs))
+	copy(offer.ImageURLs, imageURLs)
 
 	offer.HousingComplexID = housingComplexID
 	offer.Floor = floor
@@ -439,11 +445,19 @@ func (r *OfferRepository) Create(ctx context.Context, offer *domain.Offer) error
 	offer.CreatedAt = now
 	offer.UpdatedAt = now
 
+	housingComplexID := sql.NullString{}
+	if offer.HousingComplexID != nil {
+		housingComplexID = sql.NullString{
+			String: *offer.HousingComplexID,
+			Valid:  true,
+		}
+	}
+
 	err = tx.QueryRowContext(ctx, createOfferQuery,
 		offer.ID, // assume UUID generated in service layer
 		offer.UserID,
 		offer.LocationID,
-		offer.HousingComplexID,
+		housingComplexID,
 		offer.Title,
 		offer.Description,
 		offer.Price,
@@ -459,8 +473,6 @@ func (r *OfferRepository) Create(ctx context.Context, offer *domain.Offer) error
 		offer.RentalPeriod,
 		offer.LivingArea,
 		offer.KitchenArea,
-		now,
-		now,
 	).Scan(&offer.ID)
 	if err != nil {
 		r.log.Error(ctx, "failed to create offer", zap.Error(err))
@@ -495,6 +507,8 @@ func (r *OfferRepository) Update(ctx context.Context, offer *domain.Offer) error
 	defer tx.Rollback()
 
 	offer.UpdatedAt = time.Now().UTC()
+
+	println(offer.ID)
 
 	_, err = tx.ExecContext(ctx, updateOfferQuery,
 		offer.LocationID,
