@@ -60,7 +60,7 @@ func main() {
 	mux.HandleFunc("/api/v1/login", authHandler.Login)
 	mux.HandleFunc("/api/v1/logout", authHandler.Logout)
 
-	//Profile
+	// Profile
 	mux.HandleFunc("/api/v1/profile/", profileHandler.GetProfile)
 	mux.HandleFunc("/api/v1/profile/update/", profileHandler.UpdateProfile)
 	mux.HandleFunc("/api/v1/profile/security/", profileHandler.UpdateProfileSecurityByID)
@@ -68,18 +68,24 @@ func main() {
 
 	protectedMux := http.NewServeMux()
 
-	//Offers
+	// Offers
 	protectedMux.HandleFunc("/api/v1/offers", offerHandler.GetOffers)
 	protectedMux.HandleFunc("/api/v1/offers/create", offerHandler.CreateOffer)
 	protectedMux.HandleFunc("/api/v1/offers/", offerHandler.GetOffer)
 	protectedMux.HandleFunc("/api/v1/offers/delete/", offerHandler.DeleteOffer)
 	protectedMux.HandleFunc("/api/v1/offers/update/", offerHandler.UpdateOffer)
 
-	//Images
-	protectedMux.Handle("/api/v1/image/", http.StripPrefix("/api/v1/image/", http.FileServer(http.Dir("image/"))))
+	// Images
+	imageHandler := handlers.NewImageHandler(log, "http://localhost:8080", "./image")
+
+	// Upload — через auth
+	protectedMux.HandleFunc("/api/v1/image/upload", imageHandler.UploadImage)
+	// Статика — через auth
+	protectedMux.Handle("/api/v1/image/", http.StripPrefix("/api/v1/image/", http.FileServer(http.Dir("./image"))))
 
 	protectedHandler := middleware.AuthMiddleware(appLogger, jwtService)(protectedMux)
 
+	// Регистрируем защищённый handler в основном mux
 	mux.Handle("/api/v1/offers", protectedHandler)
 	mux.Handle("/api/v1/image/", protectedHandler)
 
