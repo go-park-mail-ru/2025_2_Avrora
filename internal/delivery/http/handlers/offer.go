@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/response"
+	"github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/utils"
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/domain"
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/usecase"
 	"go.uber.org/zap"
@@ -40,19 +41,13 @@ func (o *offerHandler) CreateOffer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, ok := r.Context().Value("userID").(string)
-	if !ok || userID == "" {
-		o.logger.Error(r.Context(), "no userID")
-		response.HandleError(w, nil, http.StatusUnauthorized, "требуется авторизация")
-		return
-	}
-
 	// где то тут надо из адреса сделать location ???
 	// то же самое с комлексом
 	offer := &domain.Offer{
 		Title:        req.Title,
 		Description:  req.Description,
 		ImageURLs:    req.ImageURLs,
+		LocationID:   utils.AddressToLocation(req.Address).ID,
 		Price:        int64(req.Price),
 		Area:         req.Area,
 		Rooms:        req.Rooms,
@@ -61,14 +56,14 @@ func (o *offerHandler) CreateOffer(w http.ResponseWriter, r *http.Request) {
 		PropertyType: domain.PropertyType(req.PropertyType),
 		Floor:        &req.Floor,
 		TotalFloors:  &req.TotalFloors,
-		UserID:       userID,
+		UserID:       req.UserID,
 	}
 
 	if err := o.offerUsecase.Create(r.Context(), offer); err != nil {
 		if errors.Is(err, usecase.ErrInvalidInput) {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			response.HandleError(w, err, http.StatusBadRequest, "невалидные данные")
 		} else {
-			http.Error(w, "failed to create offer", http.StatusInternalServerError)
+			response.HandleError(w, err, http.StatusInternalServerError, "ошибка создания предложения")
 		}
 		return
 	}
@@ -77,8 +72,8 @@ func (o *offerHandler) CreateOffer(w http.ResponseWriter, r *http.Request) {
 }
 
 func (o *offerHandler) DeleteOffer(w http.ResponseWriter, r *http.Request) {
-	id, ok := r.Context().Value("id").(string)
-	if !ok {
+	id := GetPathParameter(r, "/api/v1/offers/delete/")
+	if id == "" {
 		o.logger.Error(r.Context(), "invalid or no id")
 		response.HandleError(w, nil, http.StatusInternalServerError, "ошибка получения предложений")
 		return
@@ -98,7 +93,24 @@ func (o *offerHandler) UpdateOffer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	id := GetPathParameter(r, "/api/v1/offers/update/")
+	if id == "" {
+		o.logger.Error(r.Context(), "invalid or no id")
+		response.HandleError(w, nil, http.StatusInternalServerError, "ошибка получения предложений")
+		return
+	}
+
+	// Надо достать location_id как то через адрес
+	// YandexMapsURL
+	// Широта долгота
+	// Нормализованный адрес
+
+	location := utils.AddressToLocation(req.Address) // Пока так
+
 	offer := domain.Offer{
+		ID:           id,
+		UserID:       req.UserID,
+		LocationID:   location.ID,
 		Title:        req.Title,
 		Description:  req.Description,
 		ImageURLs:    req.ImageURLs,
@@ -125,16 +137,34 @@ func (o *offerHandler) UpdateOffer(w http.ResponseWriter, r *http.Request) {
 }
 
 func (o *offerHandler) GetOffer(w http.ResponseWriter, r *http.Request) {
-	id, ok := r.Context().Value("id").(string)
-	if !ok {
+	id := GetPathParameter(r, "/api/v1/offers")
+	if id == "" {
 		o.logger.Error(r.Context(), "invalid or no id")
 		response.HandleError(w, nil, http.StatusInternalServerError, "ошибка получения предложений")
 		return
 	}
+
+	println(id)
+
 	offer, err := o.offerUsecase.Get(r.Context(), id)
 	if err != nil {
 		response.HandleError(w, err, http.StatusInternalServerError, "ошибка получения предложений")
 		return
 	}
 	response.WriteJSON(w, http.StatusOK, offer)
+}
+
+func (o *offerHandler) GetMyOffers(w http.ResponseWriter, r *http.Request) {
+	userID := GetPathParameter(r, "/api/v1/profile/myoffers/")
+	if userID == "" {
+		o.logger.Error(r.Context(), "invalid or no userID")
+		response.HandleError(w, nil, http.StatusInternalServerError, "ошибка получения предложений")
+		return
+	}
+	offers, err := o.offerUsecase.ListOffersInFeedByUserID(r.Context(), userID, 1, 10)
+	if err != nil {
+		response.HandleError(w, err, http.StatusInternalServerError, "ошибка получения предложений")
+		return
+	}
+	response.WriteJSON(w, http.StatusOK, offers)
 }

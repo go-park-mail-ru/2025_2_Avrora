@@ -12,7 +12,7 @@ import (
 
 type contextKey string
 
-const UserContextKey contextKey = "user_id"
+const UserContextKey contextKey = "userID"
 
 func AuthMiddleware(logger *log.Logger, jwtGen *utils.JwtGenerator) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {

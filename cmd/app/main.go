@@ -16,8 +16,11 @@ import (
 
 func main() {
 	utils.LoadEnv()
-	var log *zap.Logger
-	log, _ = zap.NewProduction()
+
+	log, err := zap.NewProduction()
+	if err != nil {
+		panic("failed to create logger")
+	}
 	defer log.Sync()
 
 	appLogger := logger.New(log)
@@ -26,65 +29,85 @@ func main() {
 	usecaseLogger := appLogger.With(zap.String("layer", "usecase"))
 	repoLogger := appLogger.With(zap.String("layer", "repository"))
 
-	cors_origin := os.Getenv("CORS_ORIGIN")
+	corsOrigin := os.Getenv("CORS_ORIGIN")
 	port := os.Getenv("SERVER_PORT")
+
+	// Database
 	dbConn, err := db.New(utils.GetPostgresDSN())
 	if err != nil {
-		log.Fatal("failed to connect to database: ", zap.Error(err))
+		log.Fatal("failed to connect to database", zap.Error(err))
 	}
+
+	// Services
 	hasher, err := utils.NewPasswordHasher(os.Getenv("PASSWORD_PEPPER"))
 	if err != nil {
-		log.Fatal("failed to create password hasher: ", zap.Error(err))
+		log.Fatal("failed to create password hasher", zap.Error(err))
 	}
 	jwtService := utils.NewJwtGenerator(os.Getenv("JWT_SECRET"))
 
-	// Repository layer
+	// Repositories
 	userRepo := db.NewUserRepository(dbConn.GetDB(), repoLogger)
 	offerRepo := db.NewOfferRepository(dbConn.GetDB(), repoLogger)
 	profileRepo := db.NewProfileRepository(dbConn.GetDB(), repoLogger)
+	complexRepo := db.NewHousingComplexRepository(dbConn.GetDB(), repoLogger)
 
-	// Usecase layer
+	// Usecases
 	authUC := usecase.NewAuthUsecase(userRepo, hasher, jwtService, usecaseLogger)
 	offerUC := usecase.NewOfferUsecase(offerRepo, usecaseLogger)
 	profileUC := usecase.NewProfileUsecase(profileRepo, hasher, usecaseLogger)
+	complexUC := usecase.NewHousingComplexUsecase(complexRepo, usecaseLogger)
 
 	// Handlers
 	authHandler := handlers.NewAuthHandler(authUC, httpLogger)
 	offerHandler := handlers.NewOfferHandler(offerUC, httpLogger)
 	profileHandler := handlers.NewProfileHandler(profileUC, httpLogger)
+	complexHandler := handlers.NewComplexHandler(complexUC, httpLogger)
+
+	// Auth middleware helper
+	authMW := func(h http.HandlerFunc) http.HandlerFunc {
+		return middleware.AuthMiddleware(appLogger, jwtService)(h).ServeHTTP
+	}
 
 	mux := http.NewServeMux()
 
-	// Auth
+	// ┌───────────────┐
+	// │ Public routes │
+	// └───────────────┘
 	mux.HandleFunc("/api/v1/register", authHandler.Register)
 	mux.HandleFunc("/api/v1/login", authHandler.Login)
 	mux.HandleFunc("/api/v1/logout", authHandler.Logout)
 
-	//Profile
-	mux.HandleFunc("/api/v1/profile/", profileHandler.GetProfile)
-	mux.HandleFunc("/api/v1/profile/update/", profileHandler.UpdateProfile)
-	mux.HandleFunc("/api/v1/profile/security/", profileHandler.UpdateProfileSecurityByID)
-	mux.HandleFunc("/api/v1/profile/email/", profileHandler.UpdateEmail)
-
-	protectedMux := http.NewServeMux()
+	// ┌──────────────────┐
+	// │ Protected routes │
+	// └──────────────────┘
 
 	//Offers
-	protectedMux.HandleFunc("/api/v1/offers", offerHandler.GetOffers)
-	protectedMux.HandleFunc("/api/v1/offers/create", offerHandler.CreateOffer)
-	protectedMux.HandleFunc("/api/v1/offers/", offerHandler.GetOffer)
-	protectedMux.HandleFunc("/api/v1/offers/delete/", offerHandler.DeleteOffer)
-	protectedMux.HandleFunc("/api/v1/offers/update/", offerHandler.UpdateOffer)
+	mux.HandleFunc("/api/v1/offers", authMW(offerHandler.GetOffers))
+	mux.HandleFunc("/api/v1/offers/create", authMW(offerHandler.CreateOffer))
+	mux.HandleFunc("/api/v1/offers/", authMW(offerHandler.GetOffer))
+	mux.HandleFunc("/api/v1/offers/delete/", authMW(offerHandler.DeleteOffer))
+	mux.HandleFunc("/api/v1/offers/update/", authMW(offerHandler.UpdateOffer))
 
-	//Images
-	protectedMux.Handle("/api/v1/image/", http.StripPrefix("/api/v1/image/", http.FileServer(http.Dir("image/"))))
+	//Profile
+	mux.HandleFunc("/api/v1/profile/", authMW(profileHandler.GetProfile))
+	mux.HandleFunc("/api/v1/profile/update/", authMW(profileHandler.UpdateProfile))
+	mux.HandleFunc("/api/v1/profile/security/", authMW(profileHandler.UpdateProfileSecurityByID))
+	mux.HandleFunc("/api/v1/profile/email/", authMW(profileHandler.UpdateEmail))
+	mux.HandleFunc("/api/v1/profile/myoffers/", authMW(offerHandler.GetMyOffers))
 
-	protectedHandler := middleware.AuthMiddleware(appLogger, jwtService)(protectedMux)
+	//Complex
+	mux.HandleFunc("/api/v1/complexes/list", authMW(complexHandler.ListComplexes))
+	mux.HandleFunc("/api/v1/complexes/create", authMW(complexHandler.CreateComplex))
+	mux.HandleFunc("/api/v1/complexes/", authMW(complexHandler.GetComplexByID))
+	mux.HandleFunc("/api/v1/complexes/update/", authMW(complexHandler.UpdateComplex))
+	mux.HandleFunc("/api/v1/complexes/delete/", authMW(complexHandler.DeleteComplex))
 
-	mux.Handle("/api/v1/offers", protectedHandler)
-	mux.Handle("/api/v1/image/", protectedHandler)
+	// Protected image file server
+	imageFileServer := http.StripPrefix("/api/v1/image/", http.FileServer(http.Dir("image/")))
+	mux.Handle("/api/v1/image/", middleware.AuthMiddleware(appLogger, jwtService)(imageFileServer))
 
 	var handler http.Handler = mux
-	handler = middleware.CorsMiddleware(handler, cors_origin)
+	handler = middleware.CorsMiddleware(handler, corsOrigin)
 	handler = request_id.RequestIDMiddleware(handler)
 	handler = middleware.LoggerMiddleware(appLogger)(handler)
 

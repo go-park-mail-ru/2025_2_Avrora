@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/domain"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
@@ -138,11 +139,14 @@ func (uc *offerUsecase) Get(ctx context.Context, id string) (*domain.Offer, erro
 
 func (uc *offerUsecase) Create(ctx context.Context, offer *domain.Offer) error {
 	if offer == nil || offer.Title == "" {
+		uc.log.Warn(ctx, "empty offer title")
 		return domain.ErrInvalidInput
 	}
-	if offer.UserID == "" || offer.LocationID == "" || offer.Price <= 0 || offer.Area <= 0 {
+	if offer.UserID == "" || offer.Price <= 0 || offer.Area <= 0 {
+		uc.log.Warn(ctx, "invalid offer fields")
 		return domain.ErrInvalidInput
 	}
+	offer.ID = uuid.NewString()
 	return uc.offerRepo.Create(ctx, offer)
 }
 
