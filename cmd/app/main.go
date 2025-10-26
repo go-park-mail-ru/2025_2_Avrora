@@ -105,6 +105,9 @@ func main() {
 	// Protected image file server
 	imageFileServer := http.StripPrefix("/api/v1/image/", http.FileServer(http.Dir("image/")))
 	mux.Handle("/api/v1/image/", middleware.AuthMiddleware(appLogger, jwtService)(imageFileServer))
+  imageHandler := handlers.NewImageHandler(usecaseLogger, "http://localhost:8080", "./image")
+  mux.HandleFunc("/api/v1/image/upload", imageHandler.UploadImage)
+
 
 	var handler http.Handler = mux
 	handler = middleware.CorsMiddleware(handler, corsOrigin)
