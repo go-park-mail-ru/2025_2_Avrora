@@ -11,6 +11,7 @@ import (
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/utils"
 	logger "github.com/go-park-mail-ru/2025_2_Avrora/internal/log"
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/usecase"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"go.uber.org/zap"
 )
 
@@ -104,9 +105,9 @@ func main() {
 
 	// Protected image file server
 	imageFileServer := http.StripPrefix("/api/v1/image/", http.FileServer(http.Dir("image/")))
-	mux.Handle("/api/v1/image/", middleware.AuthMiddleware(appLogger, jwtService)(imageFileServer))
-  imageHandler := handlers.NewImageHandler(usecaseLogger, "http://localhost:8080", "./image")
-  mux.HandleFunc("/api/v1/image/upload", imageHandler.UploadImage)
+	mux.Handle("/api/v1/image/", authMW(imageFileServer.ServeHTTP))
+	imageHandler := handlers.NewImageHandler(usecaseLogger, "http://localhost:8080", "./image")
+	mux.HandleFunc("/api/v1/image/upload", authMW(imageHandler.UploadImage))
 
 
 	var handler http.Handler = mux

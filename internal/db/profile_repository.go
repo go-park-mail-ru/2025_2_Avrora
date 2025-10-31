@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/domain"
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/log"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
 )
 
@@ -57,11 +58,11 @@ const (
 )
 
 type ProfileRepository struct {
-	db  *sql.DB
+	db  *pgxpool.Pool
 	log *log.Logger
 }
 
-func NewProfileRepository(db *sql.DB, log *log.Logger) *ProfileRepository {
+func NewProfileRepository(db *pgxpool.Pool, log *log.Logger) *ProfileRepository {
 	return &ProfileRepository{db: db, log: log}
 }
 
@@ -71,7 +72,7 @@ func (r *ProfileRepository) GetByUserID(ctx context.Context, userID string) (*do
 	var id, userIDFromDB, firstName, lastName, phone, avatarURL *string
 	var createdAt, updatedAt *time.Time
 
-	err := r.db.QueryRowContext(ctx, getUserAndProfileLeftJoinQuery, userID).Scan(
+	err := r.db.QueryRow(ctx, getUserAndProfileLeftJoinQuery, userID).Scan(
 		&id,
 		&userIDFromDB,
 		&firstName,
@@ -117,7 +118,7 @@ func (r *ProfileRepository) Update(ctx context.Context, userID string, upd *doma
 		return nil
 	}
 
-	_, err := r.db.ExecContext(ctx, updateProfileQuery,
+	_, err := r.db.Exec(ctx, updateProfileQuery,
 		userID,
 		upd.FirstName,
 		upd.LastName,
@@ -132,7 +133,7 @@ func (r *ProfileRepository) Update(ctx context.Context, userID string, upd *doma
 
 func (r *ProfileRepository) UpdateSecurity(ctx context.Context, userID string, passwordHash string) error {
 	now := time.Now().UTC()
-	_, err := r.db.ExecContext(ctx, updateUserPasswordHashQuery,
+	_, err := r.db.Exec(ctx, updateUserPasswordHashQuery,
 		passwordHash,
 		now,
 		userID,
@@ -144,7 +145,7 @@ func (r *ProfileRepository) UpdateSecurity(ctx context.Context, userID string, p
 }
 
 func (r *ProfileRepository) UpdateEmail(ctx context.Context, userID string, email string) error {
-	_, err := r.db.ExecContext(ctx, updateUserEmailQuery, email, userID)
+	_, err := r.db.Exec(ctx, updateUserEmailQuery, email, userID)
 	if err != nil {
 		r.log.Error(ctx, "failed to update email", zap.String("user_id", userID), zap.Error(err))
 	}
@@ -153,7 +154,7 @@ func (r *ProfileRepository) UpdateEmail(ctx context.Context, userID string, emai
 
 func (r *ProfileRepository) GetUserByUserID(ctx context.Context, userID string) (*domain.User, error) {
 	user := domain.User{}
-	err := r.db.QueryRowContext(ctx, getUserByIDQuery, userID).
+	err := r.db.QueryRow(ctx, getUserByIDQuery, userID).
 		Scan(&user.ID, &user.Email, &user.PasswordHash, &user.Role, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

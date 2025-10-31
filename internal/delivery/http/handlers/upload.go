@@ -3,13 +3,15 @@ package handlers
 import (
 	_ "context"
 	"fmt"
-	"github.com/go-park-mail-ru/2025_2_Avrora/internal/log"
-	"go.uber.org/zap"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/response"
+	"github.com/go-park-mail-ru/2025_2_Avrora/internal/log"
+	"go.uber.org/zap"
 
 	"github.com/google/uuid"
 )
@@ -19,6 +21,8 @@ type ImageHandler struct {
 	baseURL    string
 	storageDir string
 }
+
+const MAX_SIZE = 10 << 20
 
 func NewImageHandler(logger *log.Logger, baseURL, storageDir string) *ImageHandler {
 	return &ImageHandler{
@@ -30,23 +34,18 @@ func NewImageHandler(logger *log.Logger, baseURL, storageDir string) *ImageHandl
 
 // UploadImage — POST /api/v1/image/upload
 func (h *ImageHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context() // для логгирования с request_id
+	ctx := r.Context()
 
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	if err := r.ParseMultipartForm(10 << 20); err != nil { // до 10 MB
+	if err := r.ParseMultipartForm(MAX_SIZE); err != nil {
 		h.logger.Error(ctx, "failed to parse multipart form", zap.Error(err))
-		http.Error(w, "invalid form data", http.StatusBadRequest)
+		response.HandleError(w, err, http.StatusBadRequest, "could not parse multipart form")
 		return
 	}
 
 	file, header, err := r.FormFile("image")
 	if err != nil {
 		h.logger.Error(ctx, "failed to get form file", zap.Error(err))
-		http.Error(w, "no file uploaded", http.StatusBadRequest)
+		response.HandleError(w, err, http.StatusBadRequest, "could not get form file")
 		return
 	}
 	defer file.Close()
@@ -62,21 +61,19 @@ func (h *ImageHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
 	out, err := os.Create(savePath)
 	if err != nil {
 		h.logger.Error(ctx, "failed to create file", zap.Error(err))
-		http.Error(w, "could not save file", http.StatusInternalServerError)
+		response.HandleError(w, err, http.StatusInternalServerError, "could not save file")
 		return
 	}
 	defer out.Close()
 
 	if _, err = io.Copy(out, file); err != nil {
 		h.logger.Error(ctx, "failed to copy file", zap.Error(err))
-		http.Error(w, "could not save file", http.StatusInternalServerError)
+		response.HandleError(w, err, http.StatusInternalServerError, "could not save file")
 		return
 	}
 
 	fileURL := fmt.Sprintf("%s/api/v1/image/%s", h.baseURL, uuidName)
 
 	h.logger.Info(ctx, "image uploaded successfully", zap.String("file", uuidName))
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, `{"url": "%s"}`, fileURL)
+	response.WriteJSON(w, http.StatusCreated, map[string]string{"url": fileURL})
 }

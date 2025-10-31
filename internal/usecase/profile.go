@@ -17,10 +17,7 @@ func (uc *profileUsecase) GetProfileByID(ctx context.Context, userID string) (*d
 	profile, email, err := uc.profileRepo.GetByUserID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, domain.ErrProfileNotFound) {
-			return &domain.Profile{
-				UserID:    userID,
-				Email:     email,
-			}, nil
+			return nil, ErrUserNotFound
 		}
 		return nil, err
 	}
@@ -39,8 +36,6 @@ func (uc *profileUsecase) GetProfileByID(ctx context.Context, userID string) (*d
 	}, nil
 }
 
-// UpdateProfileByID updates basic profile info (name, phone, avatar).
-// Does NOT update email (that's a separate secure flow).
 func (uc *profileUsecase) UpdateProfile(ctx context.Context, userID string, upd *domain.ProfileUpdate) error {
 	if userID == "" {
 		uc.log.Warn(ctx, "empty user ID in UpdateProfileByID")
@@ -51,8 +46,13 @@ func (uc *profileUsecase) UpdateProfile(ctx context.Context, userID string, upd 
 		return domain.ErrInvalidInput
 	}
 
-	// Optional: validate phone or avatar URL format here
-	// Example: if upd.Phone != "" && !isValidPhone(upd.Phone) { ... }
+	_, _, err := uc.profileRepo.GetByUserID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, domain.ErrProfileNotFound) {
+			return ErrUserNotFound
+		}
+		return err
+	}
 
 	return uc.profileRepo.Update(ctx, userID, upd)
 }
@@ -71,7 +71,6 @@ func (uc *profileUsecase) UpdateProfileSecurityByID(ctx context.Context, userID 
 		return err
 	}
 
-	println(oldPassword, newPassword)
 	if !uc.passwordHasher.Compare(user.PasswordHash, oldPassword) {
 		uc.log.Error(ctx, "invalid credentials", zap.Error(err))
 		return ErrInvalidCredentials
@@ -88,7 +87,7 @@ func (uc *profileUsecase) UpdateProfileSecurityByID(ctx context.Context, userID 
 
 func (uc *profileUsecase) UpdateEmail(ctx context.Context, userID string, email string) error {
 	if userID == "" || email == "" {
-		uc.log.Warn(ctx, "empty input in UpdateEmail", zap.String("user_id", userID))
+		uc.log.Error(ctx, "empty input in UpdateEmail", zap.String("user_id", userID))
 		return domain.ErrInvalidInput
 	}
 	return uc.profileRepo.UpdateEmail(ctx, userID, email)

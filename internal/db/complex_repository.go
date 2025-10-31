@@ -8,6 +8,8 @@ import (
 
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/domain"
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/log"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/lib/pq"
 	"go.uber.org/zap"
 )
@@ -81,16 +83,16 @@ const (
 )
 
 type HousingComplexRepository struct {
-	db  *sql.DB
+	db  *pgxpool.Pool
 	log *log.Logger
 }
 
-func NewHousingComplexRepository(db *sql.DB, log *log.Logger) *HousingComplexRepository {
+func NewHousingComplexRepository(db *pgxpool.Pool, log *log.Logger) *HousingComplexRepository {
 	return &HousingComplexRepository{db: db, log: log}
 }
 
 // scanComplex scans a row into domain.HousingComplex (without photos)
-func scanComplex(row *sql.Row) (*domain.HousingComplex, error) {
+func scanComplex(row pgx.Row) (*domain.HousingComplex, error) {
 	var c domain.HousingComplex
 	var yearBuilt *int
 	var startingPrice *int64
@@ -117,7 +119,7 @@ func scanComplex(row *sql.Row) (*domain.HousingComplex, error) {
 
 // GetByID returns full complex with all photos
 func (r *HousingComplexRepository) GetByID(ctx context.Context, id string) (*domain.HousingComplex, error) {
-	complex, err := scanComplex(r.db.QueryRowContext(ctx, getComplexByIDQuery, id))
+	complex, err := scanComplex(r.db.QueryRow(ctx, getComplexByIDQuery, id))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, domain.ErrComplexNotFound
@@ -127,7 +129,7 @@ func (r *HousingComplexRepository) GetByID(ctx context.Context, id string) (*dom
 	}
 
 	// Load all photos
-	rows, err := r.db.QueryContext(ctx,
+	rows, err := r.db.Query(ctx,
 		"SELECT url FROM complex_photo WHERE complex_id = $1 ORDER BY created_at",
 		id)
 	if err != nil {
@@ -153,7 +155,7 @@ func (r *HousingComplexRepository) GetByID(ctx context.Context, id string) (*dom
 func (r *HousingComplexRepository) List(ctx context.Context, page, limit int) (*domain.ComplexesInFeed, error) {
 	offset := (page - 1) * limit
 
-	rows, err := r.db.QueryContext(ctx, listComplexesInFeedQuery, limit, offset)
+	rows, err := r.db.Query(ctx, listComplexesInFeedQuery, limit, offset)
 	if err != nil {
 		r.log.Error(ctx, "failed to list complexes in feed", zap.Error(err))
 		return nil, err
@@ -207,7 +209,7 @@ func (r *HousingComplexRepository) Create(ctx context.Context, c *domain.Housing
 	c.CreatedAt = now
 	c.UpdatedAt = now
 
-	_, err := r.db.ExecContext(ctx, createComplexQuery,
+	_, err := r.db.Exec(ctx, createComplexQuery,
 		c.Name,
 		c.Description,
 		c.YearBuilt,
@@ -223,7 +225,7 @@ func (r *HousingComplexRepository) Create(ctx context.Context, c *domain.Housing
 
 	// Insert photos in one query
 	if len(c.ImageURLs) > 0 {
-		_, err = r.db.ExecContext(ctx, createComplexPhotosQuery, c.ID, now, pq.StringArray(c.ImageURLs))
+		_, err = r.db.Exec(ctx, createComplexPhotosQuery, c.ID, now, pq.StringArray(c.ImageURLs))
 		if err != nil {
 			r.log.Warn(ctx, "failed to insert photos", zap.String("complex_id", c.ID), zap.Error(err))
 			// Note: You may want to roll back complex creation — handle in service layer with tx
@@ -238,7 +240,7 @@ func (r *HousingComplexRepository) Create(ctx context.Context, c *domain.Housing
 func (r *HousingComplexRepository) Update(ctx context.Context, c *domain.HousingComplex) error {
 	c.UpdatedAt = time.Now().UTC()
 
-	_, err := r.db.ExecContext(ctx, updateComplexQuery,
+	_, err := r.db.Exec(ctx, updateComplexQuery,
 		c.ID,
 		c.Name,
 		c.Description,
@@ -255,10 +257,10 @@ func (r *HousingComplexRepository) Update(ctx context.Context, c *domain.Housing
 	}
 
 	// Replace photos
-	_, _ = r.db.ExecContext(ctx, deleteComplexPhotosQuery, c.ID)
+	_, _ = r.db.Exec(ctx, deleteComplexPhotosQuery, c.ID)
 	if len(c.ImageURLs) > 0 {
 		now := time.Now().UTC()
-		_, _ = r.db.ExecContext(ctx, createComplexPhotosQuery, c.ID, now, pq.StringArray(c.ImageURLs))
+		_, _ = r.db.Exec(ctx, createComplexPhotosQuery, c.ID, now, pq.StringArray(c.ImageURLs))
 	}
 
 	r.log.Info(ctx, "updated housing complex", zap.String("id", c.ID))
@@ -267,7 +269,7 @@ func (r *HousingComplexRepository) Update(ctx context.Context, c *domain.Housing
 
 // Delete removes complex (photos auto-deleted via CASCADE)
 func (r *HousingComplexRepository) Delete(ctx context.Context, id string) error {
-	_, err := r.db.ExecContext(ctx, deleteComplexQuery, id)
+	_, err := r.db.Exec(ctx, deleteComplexQuery, id)
 	if err != nil {
 		r.log.Error(ctx, "failed to delete housing complex", zap.String("id", id), zap.Error(err))
 		return err

@@ -49,7 +49,7 @@ func (p *profileHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response.WriteJSON(w, http.StatusOK, nil)
+	response.WriteJSON(w, http.StatusOK, "success")
 }
 
 func (p *profileHandler) UpdateProfileSecurityByID(w http.ResponseWriter, r *http.Request) {
@@ -70,7 +70,7 @@ func (p *profileHandler) UpdateProfileSecurityByID(w http.ResponseWriter, r *htt
 		response.HandleError(w, err, http.StatusBadRequest, err.Error())
 		return
 	}
-	response.WriteJSON(w, http.StatusOK, nil)
+	response.WriteJSON(w, http.StatusOK, "success")
 }
 
 func (p *profileHandler) UpdateEmail(w http.ResponseWriter, r *http.Request) {
@@ -92,7 +92,7 @@ func (p *profileHandler) UpdateEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response.WriteJSON(w, http.StatusOK, nil)
+	response.WriteJSON(w, http.StatusOK, "success")
 }
 
 func SafeStringDeref(s *string) string {

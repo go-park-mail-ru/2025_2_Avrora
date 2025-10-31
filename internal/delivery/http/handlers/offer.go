@@ -16,13 +16,13 @@ func (o *offerHandler) GetOffers(w http.ResponseWriter, r *http.Request) {
 	page, err := parseIntQueryParam(r, "page", 1)
 	if err != nil {
 		o.logger.Error(r.Context(), "invalid or no page", zap.Error(err))
-		response.HandleError(w, err, http.StatusInternalServerError, "ошибка получения предложений")
+		response.HandleError(w, err, http.StatusBadRequest, "no page")
 		return
 	}
 	limit, err := parseIntQueryParam(r, "limit", 10)
 	if err != nil {
 		o.logger.Error(r.Context(), "invalid or no limit", zap.Error(err))
-		response.HandleError(w, err, http.StatusInternalServerError, "ошибка получения предложений")
+		response.HandleError(w, err, http.StatusBadRequest, "no limit")
 		return
 	}
 	result, err := o.offerUsecase.ListOffersInFeed(r.Context(), page, limit)
@@ -75,14 +75,14 @@ func (o *offerHandler) DeleteOffer(w http.ResponseWriter, r *http.Request) {
 	id := GetPathParameter(r, "/api/v1/offers/delete/")
 	if id == "" {
 		o.logger.Error(r.Context(), "invalid or no id")
-		response.HandleError(w, nil, http.StatusInternalServerError, "ошибка получения предложений")
+		response.HandleError(w, nil, http.StatusBadRequest, "нет id")
 		return
 	}
 	if err := o.offerUsecase.Delete(r.Context(), id); err != nil {
 		response.HandleError(w, err, http.StatusInternalServerError, "ошибка удаления предложения")
 		return
 	}
-	response.WriteJSON(w, http.StatusOK, nil)
+	response.WriteJSON(w, http.StatusOK, "success")
 }
 
 func (o *offerHandler) UpdateOffer(w http.ResponseWriter, r *http.Request) {
@@ -96,7 +96,7 @@ func (o *offerHandler) UpdateOffer(w http.ResponseWriter, r *http.Request) {
 	id := GetPathParameter(r, "/api/v1/offers/update/")
 	if id == "" {
 		o.logger.Error(r.Context(), "invalid or no id")
-		response.HandleError(w, nil, http.StatusInternalServerError, "ошибка получения предложений")
+		response.HandleError(w, nil, http.StatusBadRequest, "нет id")
 		return
 	}
 
@@ -140,7 +140,7 @@ func (o *offerHandler) GetOffer(w http.ResponseWriter, r *http.Request) {
 	id := GetPathParameter(r, "/api/v1/offers")
 	if id == "" {
 		o.logger.Error(r.Context(), "invalid or no id")
-		response.HandleError(w, nil, http.StatusInternalServerError, "ошибка получения предложений")
+		response.HandleError(w, nil, http.StatusBadRequest, "нет id")
 		return
 	}
 
@@ -158,7 +158,7 @@ func (o *offerHandler) GetMyOffers(w http.ResponseWriter, r *http.Request) {
 	userID := GetPathParameter(r, "/api/v1/profile/myoffers/")
 	if userID == "" {
 		o.logger.Error(r.Context(), "invalid or no userID")
-		response.HandleError(w, nil, http.StatusInternalServerError, "ошибка получения предложений")
+		response.HandleError(w, nil, http.StatusBadRequest, "нет userID")
 		return
 	}
 	offers, err := o.offerUsecase.ListOffersInFeedByUserID(r.Context(), userID, 1, 10)

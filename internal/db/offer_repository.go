@@ -8,6 +8,8 @@ import (
 
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/domain"
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/log"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/lib/pq"
 	"go.uber.org/zap"
 )
@@ -221,11 +223,11 @@ const (
 )
 
 type OfferRepository struct {
-	db  *sql.DB
+	db  *pgxpool.Pool
 	log *log.Logger
 }
 
-func NewOfferRepository(db *sql.DB, log *log.Logger) *OfferRepository {
+func NewOfferRepository(db *pgxpool.Pool, log *log.Logger) *OfferRepository {
 	return &OfferRepository{db: db, log: log}
 }
 
@@ -238,7 +240,7 @@ func scanOfferRow(scanner interface {
 		deposit, commission     *int64
 		rentalPeriod            *string
 		livingArea, kitchenArea *float64
-		imageURLs               pq.StringArray
+		imageURLs               []string  // ← Change from pq.StringArray to []string
 		offer                   domain.Offer
 	)
 
@@ -271,8 +273,7 @@ func scanOfferRow(scanner interface {
 		return nil, err
 	}
 
-	offer.ImageURLs = make([]string, len(imageURLs))
-	copy(offer.ImageURLs, imageURLs)
+	offer.ImageURLs = imageURLs
 
 	offer.HousingComplexID = housingComplexID
 	offer.Floor = floor
@@ -286,7 +287,7 @@ func scanOfferRow(scanner interface {
 	return &offer, nil
 }
 
-func scanOffer(row *sql.Row) (*domain.Offer, error) {
+func scanOffer(row pgx.Row) (*domain.Offer, error) {
 	return scanOfferRow(row)
 }
 
@@ -327,7 +328,7 @@ func scanOfferInFeedRow(scanner interface {
 	return &o, nil
 }
 
-func scanOffersInFeed(rows *sql.Rows) ([]domain.OfferInFeed, error) {
+func scanOffersInFeed(rows pgx.Rows) ([]domain.OfferInFeed, error) {
 	var offers []domain.OfferInFeed
 	for rows.Next() {
 		offer, err := scanOfferInFeedRow(rows)
@@ -349,7 +350,7 @@ func (r *OfferRepository) fetchPhotosForOffers(ctx context.Context, offers []*do
 		ids[i] = o.ID
 	}
 
-	rows, err := r.db.QueryContext(ctx, `
+	rows, err := r.db.Query(ctx, `
 		SELECT offer_id, url 
 		FROM offer_photo 
 		WHERE offer_id = ANY($1)
@@ -382,7 +383,7 @@ func (r *OfferRepository) fetchPhotosForOffers(ctx context.Context, offers []*do
 }
 
 func (r *OfferRepository) GetByID(ctx context.Context, id string) (*domain.Offer, error) {
-	offer, err := scanOffer(r.db.QueryRowContext(ctx, getOfferByIDQuery, id))
+	offer, err := scanOffer(r.db.QueryRow(ctx, getOfferByIDQuery, id))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, domain.ErrOfferNotFound
@@ -391,7 +392,6 @@ func (r *OfferRepository) GetByID(ctx context.Context, id string) (*domain.Offer
 		return nil, err
 	}
 
-	// Load photos in batch (even for 1 offer)
 	if err := r.fetchPhotosForOffers(ctx, []*domain.Offer{offer}); err != nil {
 		r.log.Warn(ctx, "failed to load photos for offer", zap.String("id", id), zap.Error(err))
 		offer.ImageURLs = []string{}
@@ -403,7 +403,7 @@ func (r *OfferRepository) GetByID(ctx context.Context, id string) (*domain.Offer
 func (r *OfferRepository) List(ctx context.Context, page, limit int) (*domain.OffersInFeed, error) {
 	offset := (page - 1) * limit
 
-	rows, err := r.db.QueryContext(ctx, listOffersQuery, limit, offset)
+	rows, err := r.db.Query(ctx, listOffersQuery, limit, offset)
 	if err != nil {
 		r.log.Error(ctx, "failed to list offers", zap.Error(err))
 		return nil, err
@@ -435,128 +435,102 @@ func (r *OfferRepository) List(ctx context.Context, page, limit int) (*domain.Of
 }
 
 func (r *OfferRepository) Create(ctx context.Context, offer *domain.Offer) error {
-	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
 	now := time.Now().UTC()
 	offer.CreatedAt = now
 	offer.UpdatedAt = now
 
-	housingComplexID := sql.NullString{}
-	if offer.HousingComplexID != nil {
-		housingComplexID = sql.NullString{
-			String: *offer.HousingComplexID,
-			Valid:  true,
-		}
-	}
-
-	err = tx.QueryRowContext(ctx, createOfferQuery,
-		offer.ID, // assume UUID generated in service layer
-		offer.UserID,
-		offer.LocationID,
-		housingComplexID,
-		offer.Title,
-		offer.Description,
-		offer.Price,
-		offer.Area,
-		offer.Address,
-		offer.Rooms,
-		offer.PropertyType,
-		offer.OfferType,
-		offer.Floor,
-		offer.TotalFloors,
-		offer.Deposit,
-		offer.Commission,
-		offer.RentalPeriod,
-		offer.LivingArea,
-		offer.KitchenArea,
-	).Scan(&offer.ID)
-	if err != nil {
-		r.log.Error(ctx, "failed to create offer", zap.Error(err))
-		return err
-	}
-
-	// Insert photos
-	for _, url := range offer.ImageURLs {
-		_, err := tx.ExecContext(ctx,
-			"INSERT INTO offer_photo (offer_id, url, created_at, updated_at) VALUES ($1, $2, $3, $3)",
-			offer.ID, url, now)
+	return pgx.BeginFunc(ctx, r.db, func(tx pgx.Tx) error {
+		err := tx.QueryRow(ctx, createOfferQuery,
+			offer.ID,
+			offer.UserID,
+			offer.LocationID,
+			offer.HousingComplexID,
+			offer.Title,
+			offer.Description,
+			offer.Price,
+			offer.Area,
+			offer.Address,
+			offer.Rooms,
+			offer.PropertyType,
+			offer.OfferType,
+			offer.Floor,
+			offer.TotalFloors,
+			offer.Deposit,
+			offer.Commission,
+			offer.RentalPeriod,
+			offer.LivingArea,
+			offer.KitchenArea,
+		).Scan(&offer.ID)
 		if err != nil {
-			r.log.Warn(ctx, "failed to insert photo", zap.String("offer_id", offer.ID), zap.String("url", url), zap.Error(err))
-			// Optionally: abort on photo error? Usually not.
+			r.log.Error(ctx, "failed to create offer", zap.Error(err))
+			return err // triggers ROLLBACK
 		}
-	}
 
-	if err := tx.Commit(); err != nil {
-		r.log.Error(ctx, "failed to commit offer creation", zap.Error(err))
-		return err
-	}
+		// Insert photos
+		for _, url := range offer.ImageURLs {
+			_, err := tx.Exec(ctx,
+				"INSERT INTO offer_photo (offer_id, url, created_at, updated_at) VALUES ($1, $2, $3, $3)",
+				offer.ID, url, now)
+			if err != nil {
+				r.log.Warn(ctx, "failed to insert photo",
+					zap.String("offer_id", offer.ID),
+					zap.String("url", url),
+					zap.Error(err))
+				// Continue on photo error (as in original)
+			}
+		}
 
-	r.log.Info(ctx, "created offer", zap.String("id", offer.ID))
-	return nil
+		r.log.Info(ctx, "created offer", zap.String("id", offer.ID))
+		return nil // triggers COMMIT
+	})
 }
 
 func (r *OfferRepository) Update(ctx context.Context, offer *domain.Offer) error {
-	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
 	offer.UpdatedAt = time.Now().UTC()
 
-	println(offer.ID)
+	return pgx.BeginFunc(ctx, r.db, func(tx pgx.Tx) error {
+		_, err := tx.Exec(ctx, updateOfferQuery,
+			offer.LocationID,
+			offer.HousingComplexID,
+			offer.Title,
+			offer.Description,
+			offer.Price,
+			offer.Area,
+			offer.Address,
+			offer.Rooms,
+			offer.PropertyType,
+			offer.OfferType,
+			offer.Status,
+			offer.Floor,
+			offer.TotalFloors,
+			offer.Deposit,
+			offer.Commission,
+			offer.RentalPeriod,
+			offer.LivingArea,
+			offer.KitchenArea,
+			offer.UpdatedAt,
+			offer.ID,
+		)
+		if err != nil {
+			r.log.Error(ctx, "failed to update offer", zap.String("id", offer.ID), zap.Error(err))
+			return err // triggers ROLLBACK
+		}
 
-	_, err = tx.ExecContext(ctx, updateOfferQuery,
-		offer.LocationID,
-		offer.HousingComplexID,
-		offer.Title,
-		offer.Description,
-		offer.Price,
-		offer.Area,
-		offer.Address,
-		offer.Rooms,
-		offer.PropertyType,
-		offer.OfferType,
-		offer.Status,
-		offer.Floor,
-		offer.TotalFloors,
-		offer.Deposit,
-		offer.Commission,
-		offer.RentalPeriod,
-		offer.LivingArea,
-		offer.KitchenArea,
-		offer.UpdatedAt,
-		offer.ID,
-	)
-	if err != nil {
-		r.log.Error(ctx, "failed to update offer", zap.String("id", offer.ID), zap.Error(err))
-		return err
-	}
+		_, _ = tx.Exec(ctx, "DELETE FROM offer_photo WHERE offer_id = $1", offer.ID)
+		now := time.Now().UTC()
+		for _, url := range offer.ImageURLs {
+			_, _ = tx.Exec(ctx,
+				"INSERT INTO offer_photo (offer_id, url, created_at, updated_at) VALUES ($1, $2, $3, $3)",
+				offer.ID, url, now)
+		}
 
-	// Replace photos
-	_, _ = tx.ExecContext(ctx, "DELETE FROM offer_photo WHERE offer_id = $1", offer.ID)
-	now := time.Now().UTC()
-	for _, url := range offer.ImageURLs {
-		_, _ = tx.ExecContext(ctx,
-			"INSERT INTO offer_photo (offer_id, url, created_at, updated_at) VALUES ($1, $2, $3, $3)",
-			offer.ID, url, now)
-	}
-
-	if err := tx.Commit(); err != nil {
-		r.log.Error(ctx, "failed to commit offer update", zap.Error(err))
-		return err
-	}
-
-	r.log.Info(ctx, "updated offer", zap.String("id", offer.ID))
-	return nil
+		r.log.Info(ctx, "updated offer", zap.String("id", offer.ID))
+		return nil
+	})
 }
 
 func (r *OfferRepository) Delete(ctx context.Context, id string) error {
-	_, err := r.db.ExecContext(ctx, deleteOfferQuery, id)
+	_, err := r.db.Exec(ctx, deleteOfferQuery, id)
 	if err != nil {
 		r.log.Error(ctx, "failed to delete offer", zap.String("id", id), zap.Error(err))
 		return err
@@ -567,7 +541,7 @@ func (r *OfferRepository) Delete(ctx context.Context, id string) error {
 
 func (r *OfferRepository) CountAll(ctx context.Context) (int, error) {
 	var total int
-	err := r.db.QueryRowContext(ctx, countAllOffersQuery).Scan(&total)
+	err := r.db.QueryRow(ctx, countAllOffersQuery).Scan(&total)
 	if err != nil {
 		r.log.Error(ctx, "failed to count offers", zap.Error(err))
 		return 0, err
@@ -585,7 +559,7 @@ func (r *OfferRepository) ListByUserID(ctx context.Context, userID string, page,
 	offset := (page - 1) * limit
 
 	// Fetch offers
-	rows, err := r.db.QueryContext(ctx, listOffersByUserIDQuery, userID, limit, offset)
+	rows, err := r.db.Query(ctx, listOffersByUserIDQuery, userID, limit, offset)
 	if err != nil {
 		r.log.Error(ctx, "failed to list offers by user", zap.String("user_id", userID), zap.Error(err))
 		return nil, err
@@ -600,7 +574,7 @@ func (r *OfferRepository) ListByUserID(ctx context.Context, userID string, page,
 
 	// Fetch total count for pagination metadata
 	var total int
-	err = r.db.QueryRowContext(ctx, countOffersByUserIDQuery, userID).Scan(&total)
+	err = r.db.QueryRow(ctx, countOffersByUserIDQuery, userID).Scan(&total)
 	if err != nil {
 		r.log.Warn(ctx, "failed to count total offers for user", zap.String("user_id", userID), zap.Error(err))
 		total = len(offers) // fallback
@@ -616,22 +590,4 @@ func (r *OfferRepository) ListByUserID(ctx context.Context, userID string, page,
 		},
 		Offers: offers,
 	}, nil
-}
-
-// func (r *OfferRepository) listPhotosForOffer(ctx context.Context, offerID string) ([]string, error) {
-// 	rows, err := r.db.QueryContext(ctx, listPhotosForOfferQuery, offerID)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	defer rows.Close()
-
-// 	var urls []string
-// 	for rows.Next() {
-// 		var url string
-// 		if err := rows.Scan(&url); err != nil {
-// 			return nil, err
-// 		}
-// 		urls = append(urls, url)
-// 	}
-// 	return urls, nil
-// }
+}	
