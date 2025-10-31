@@ -5,40 +5,57 @@ import (
 	"time"
 )
 
+type OfferType string
+type PropertyType string
+type OfferStatus string
+type OfferID string
+type PhotoURL string
+
+const (
+	OfferTypeSale OfferType = "sale"
+	OfferTypeRent OfferType = "rent"
+
+	PropertyTypeHouse     PropertyType = "house"
+	PropertyTypeApartment PropertyType = "apartment"
+
+	OfferStatusActive   OfferStatus = "active"
+	OfferStatusSold     OfferStatus = "sold"
+	OfferStatusArchived OfferStatus = "archived"
+)
+
 type Offer struct {
-	ID               int
-	InHousingComplex bool
-	HousingComplex   string
-	OfferType        string
-	PropertyType     string
+	ID               string  // UUID
+	UserID           string  // UUID
+	LocationID       string  // UUID
+	HousingComplexID *string // UUID (nullable)
 	Title            string
-	UserID           int
-	Category         string
-	Address          string
-	Floor            int
-	TotalFloors      int
-	Rooms            int
-	Area             float64
-	LivingArea       float64
-	KitchenArea      float64
-	Price            float64
 	Description      string
-	Deposit          float64
-	Commission       float64
-	RentalPeriod     string
+	Price            int64   // BIGINT
+	Area             float64 // DECIMAL(10,2)
+	Address          string
+	Rooms            int
+	PropertyType     PropertyType
+	OfferType        OfferType
+	Status           OfferStatus
+	Floor            *int     // nullable
+	TotalFloors      *int     // nullable
+	Deposit          *int64   // nullable BIGINT
+	Commission       *int64   // nullable BIGINT
+	RentalPeriod     *string  // nullable
+	LivingArea       *float64 // nullable
+	KitchenArea      *float64 // nullable
 	ImageURLs        []string
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
 }
 
-// Офферы
+// For feed (simplified + joined data)
 type OfferInFeed struct {
-	ID           int
-	UserID       int
-	OfferURL     string
-	OfferType    string // sale | rent
-	PropertyType string // house | apartment
-	Price        float64
+	ID           string
+	UserID       string
+	OfferType    OfferType
+	PropertyType PropertyType
+	Price        int64
 	Area         float64
 	Rooms        int
 	Floor        int
@@ -50,7 +67,6 @@ type OfferInFeed struct {
 	UpdatedAt    time.Time
 }
 
-// Оффер в нлентеx
 type OffersInFeed struct {
 	Meta struct {
 		Total  int
@@ -58,25 +74,29 @@ type OffersInFeed struct {
 	}
 	Offers []OfferInFeed
 }
+
 type OfferCreate struct {
-	InHousingComplex bool
-	HousingComplex   string
-	OfferType        string
-	PropertyType     string
-	Category         string
-	Address          string
-	Floor            int
-	TotalFloors      int
-	Rooms            int
-	Area             float64
-	LivingArea       float64
-	KitchenArea      float64
-	Price            float64
+	HousingComplexID *string
+	OfferType        OfferType
+	PropertyType     PropertyType
+	Title            string
 	Description      string
-	Deposit          float64
-	Commission       float64
-	RentalPeriod     string
+	Price            int64
+	Area             float64
+	Address          string
+	Rooms            int
+	Floor            *int
+	TotalFloors      *int
+	Deposit          *int64
+	Commission       *int64
+	RentalPeriod     *string
+	LivingArea       *float64
+	KitchenArea      *float64
 	ImageURLs        []string
+}
+
+type FirstPhotosForOffers struct { // For offers in feed
+	Photos map[OfferID]PhotoURL
 }
 
 var (
