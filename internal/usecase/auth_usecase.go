@@ -10,7 +10,6 @@ import (
 type IUserRepository interface {
 	Create(ctx context.Context, user *domain.User) error
 	GetUserByEmail(ctx context.Context, email string) (*domain.User, error)
-	GetUserByID(ctx context.Context, id string) (*domain.User, error)
 }
 
 type IPasswordHasher interface {

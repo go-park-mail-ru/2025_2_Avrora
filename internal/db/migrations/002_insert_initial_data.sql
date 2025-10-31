@@ -61,10 +61,3 @@ INSERT INTO photo (offer_id, url) VALUES
 ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'https://example.com/photos/apt1_main.jpg'),
 ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'https://example.com/photos/apt1_kitchen.jpg'),
 ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'https://example.com/photos/apt1_bedroom.jpg');
-
--- Insert a sample review
-INSERT INTO review (user_id, offer_id, rating, comment) VALUES
-('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
- 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
- 5,
- 'Excellent location and condition! Highly recommended.');

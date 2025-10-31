@@ -67,3 +67,23 @@ func parseIntQueryParam(r *http.Request, key string, defaultValue int) (int, err
 	}
 	return strconv.Atoi(val)
 }
+
+func GetPathParameter(r *http.Request, basePattern string) string {
+	if !strings.HasSuffix(basePattern, "/") {
+		basePattern += "/"
+	}
+
+	path := r.URL.Path
+
+	if !strings.HasPrefix(path, basePattern) {
+		return ""
+	}
+
+	remainder := strings.TrimPrefix(path, basePattern)
+
+	if i := strings.Index(remainder, "/"); i >= 0 {
+		return remainder[:i]
+	}
+
+	return remainder
+}
