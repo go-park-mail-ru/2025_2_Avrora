@@ -105,7 +105,7 @@ func main() {
 
 	// Protected image file server
 	imageFileServer := http.StripPrefix("/api/v1/image/", http.FileServer(http.Dir("image/")))
-	mux.Handle("/api/v1/image/", authMW(imageFileServer.ServeHTTP))
+	mux.Handle("/api/v1/image/", imageFileServer)
 	imageHandler := handlers.NewImageHandler(usecaseLogger, "http://localhost:8080", "./image")
 	mux.HandleFunc("/api/v1/image/upload", authMW(imageHandler.UploadImage))
 

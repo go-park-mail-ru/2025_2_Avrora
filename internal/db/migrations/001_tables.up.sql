@@ -101,8 +101,7 @@ CREATE TABLE profile (
     last_name TEXT CHECK (LENGTH(last_name) <= 100),
     phone TEXT CHECK (LENGTH(phone) <= 20),
     avatar_url TEXT
-        CHECK (LENGTH(avatar_url) <= 1024)
-        CHECK (avatar_url ~ '^https?://[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?\.[a-zA-Z]{2,}(:[0-9]{1,5})?(/.*)?$'),
+        CHECK (LENGTH(avatar_url) <= 1024),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -144,8 +143,7 @@ CREATE TABLE offer_photo (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     offer_id UUID NOT NULL REFERENCES offer(id) ON DELETE CASCADE,
     url TEXT NOT NULL
-        CHECK (LENGTH(url) <= 1024)
-        CHECK (url ~ '^https?://[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?\.[a-zA-Z]{2,}(:[0-9]{1,5})?(/.*)?$'),
+        CHECK (LENGTH(url) <= 1024),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -157,8 +155,7 @@ CREATE TABLE complex_photo (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     complex_id UUID NOT NULL REFERENCES housing_complex(id) ON DELETE CASCADE,
     url TEXT NOT NULL
-        CHECK (LENGTH(url) <= 1024)
-        CHECK (url ~ '^https?://[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?\.[a-zA-Z]{2,}(:[0-9]{1,5})?(/.*)?$'),
+        CHECK (LENGTH(url) <= 1024),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

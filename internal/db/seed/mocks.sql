@@ -39,8 +39,8 @@ INSERT INTO housing_complex (id, name, description, year_built, location_id, dev
 
 -- Insert complex photos
 INSERT INTO complex_photo (complex_id, url) VALUES
-  ('50000000-0000-0000-0000-000000000001', 'https://example.com/photos/complex1_1.jpg'),
-  ('50000000-0000-0000-0000-000000000001', 'https://example.com/photos/complex1_2.jpg');
+  ('50000000-0000-0000-0000-000000000001', 'http::/localhost:8080/api/v1/image/default_offer.jpg'),
+  ('50000000-0000-0000-0000-000000000001', 'http::/localhost:8080/api/v1/image/default_offer.jpg');
 
 -- Insert offers
 INSERT INTO offer (
@@ -70,6 +70,6 @@ INSERT INTO offer (
 
 -- Insert offer photos
 INSERT INTO offer_photo (offer_id, url) VALUES
-  ('60000000-0000-0000-0000-000000000001', 'https://example.com/photos/offer1_1.jpg'),
-  ('60000000-0000-0000-0000-000000000001', 'https://example.com/photos/offer1_2.jpg'),
-  ('60000000-0000-0000-0000-000000000002', 'https://example.com/photos/offer2_1.jpg');
+  ('60000000-0000-0000-0000-000000000001', 'http::/localhost:8080/api/v1/image/default_offer.jpg'),
+  ('60000000-0000-0000-0000-000000000001', 'http::/localhost:8080/api/v1/image/default_offer.jpg'),
+  ('60000000-0000-0000-0000-000000000002', 'http::/localhost:8080/api/v1/image/default_offer.jpg');
