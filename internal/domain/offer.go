@@ -49,6 +49,19 @@ type Offer struct {
 	UpdatedAt        time.Time
 }
 
+type OfferFilter struct {
+  OfferType    *string // 'sale' | 'rent'
+  PropertyType *string // 'house' | 'apartment'
+  Rooms        *int
+  PriceMin     *int64
+  PriceMax     *int64
+  AreaMin      *float64
+  AreaMax      *float64
+  Status       *string
+  Utug         *bool
+  // 'active' | 'sold' | 'archived'
+}
+
 // For feed (simplified + joined data)
 type OfferInFeed struct {
 	ID           string
