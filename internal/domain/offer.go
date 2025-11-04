@@ -50,17 +50,16 @@ type Offer struct {
 }
 
 type OfferFilter struct {
-	OfferType    *string // 'sale' | 'rent'
-	PropertyType *string // 'house' | 'apartment'
-	Rooms        *int
-	PriceMin     *int64
-	PriceMax     *int64
-	AreaMin      *float64
-	AreaMax      *float64
-	Status       *string
-	Utug         *bool //гипотетически
-	Address      *string
-	// 'active' | 'sold' | 'archived'
+	OfferType    *string  `json:"offer_type"`
+	PropertyType *string  `json:"property_type"`
+	Rooms        *int     `json:"rooms"`
+	PriceMin     *int64   `json:"price_min"`
+	PriceMax     *int64   `json:"price_max"`
+	AreaMin      *float64 `json:"area_min"`
+	AreaMax      *float64 `json:"area_max"`
+	Status       *string  `json:"status"`
+	Utug         *bool    `json:"utug"`
+	Address      *string  `json:"address"`
 }
 
 // For feed (simplified + joined data)
