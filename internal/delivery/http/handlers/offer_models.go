@@ -6,7 +6,7 @@ type CreateOfferRequest struct {
 	OfferType        string   `json:"offer_type"`    // sale | rent
 	PropertyType     string   `json:"property_type"` // house | apartment
 	Title            string   `json:"title"`
-	UserID           int      `json:"user_id"`
+	UserID           string   `json:"user_id"`
 	Category         string   `json:"category"`
 	Address          string   `json:"address"`
 	Floor            int      `json:"floor"`
@@ -17,8 +17,8 @@ type CreateOfferRequest struct {
 	KitchenArea      float64  `json:"kitchen_area"`
 	Price            float64  `json:"price"`
 	Description      string   `json:"description"`
-	Deposit          float64  `json:"deposit"`
-	Commission       float64  `json:"commission"`
+	Deposit          int64  `json:"deposit"`
+	Commission       int64  `json:"commission"`
 	RentalPeriod     string   `json:"rental_period"`
 	ImageURLs        []string `json:"image_urls"`
 }
@@ -68,9 +68,10 @@ type UpdateOfferRequest struct {
 	OfferType        string   `json:"offer_type"`    // sale | rent
 	PropertyType     string   `json:"property_type"` // house | apartment
 	Title            string   `json:"title"`
-	UserID           int      `json:"user_id"`
+	UserID           string   `json:"user_id"`
 	Category         string   `json:"category"`
 	Address          string   `json:"address"`
+	Status           string   `json:"status"` // active | sold | archived
 	Floor            int      `json:"floor"`
 	TotalFloors      int      `json:"total_floors"`
 	Rooms            int      `json:"rooms"`
@@ -79,8 +80,8 @@ type UpdateOfferRequest struct {
 	KitchenArea      float64  `json:"kitchen_area"`
 	Price            float64  `json:"price"`
 	Description      string   `json:"description"`
-	Deposit          float64  `json:"deposit"`
-	Commission       float64  `json:"commission"`
+	Deposit          int64    `json:"deposit"`
+	Commission       int64    `json:"commission"`
 	RentalPeriod     string   `json:"rental_period"`
 	ImageURLs        []string `json:"image_urls"`
 }

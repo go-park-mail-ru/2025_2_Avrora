@@ -6,47 +6,30 @@ BEGIN
     NEW.updated_at = NOW();
     RETURN NEW;
 END;
-$$ language 'plpgsql';
+$$ LANGUAGE plpgsql;
 
+-- Enums
 CREATE TYPE offer_type_enum AS ENUM ('sale', 'rent');
 CREATE TYPE offer_status_enum AS ENUM ('active', 'sold', 'archived');
 CREATE TYPE user_role_enum AS ENUM ('user', 'owner', 'realtor');
-CREATE TYPE property_type_enum AS ENUM('house', 'apartment');
+CREATE TYPE property_type_enum AS ENUM ('house', 'apartment');
 
+-- users
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    email TEXT NOT NULL UNIQUE 
+    email TEXT NOT NULL UNIQUE
         CHECK (LENGTH(email) <= 255)
-        CHECK (email ~ '^[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.[\p{L}]{2,}$'), -- Регулярка совпадает с тем что на бэке и фронте
+        CHECK (email ~ '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'),
     password_hash TEXT NOT NULL CHECK (LENGTH(password_hash) <= 255),
-    avatar_url TEXT 
-        CHECK (LENGTH(avatar_url) <= 1024)
-        CHECK (avatar_url IS NULL OR avatar_url ~ '^https?://[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(/.*)?$'),
     role user_role_enum NOT NULL DEFAULT 'user',
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    first_name TEXT CHECK (LENGTH(first_name) <= 100),
-    last_name TEXT CHECK (LENGTH(last_name) <= 100),
-    phone TEXT CHECK (LENGTH(phone) <= 20),
-    photo_url TEXT
-
-);
-CREATE TRIGGER set_updated_at_users 
-    BEFORE UPDATE ON users 
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TABLE category (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name TEXT NOT NULL CHECK (LENGTH(name) <= 100),
-    slug TEXT NOT NULL UNIQUE CHECK (LENGTH(slug) <= 100),
-    description TEXT CHECK (LENGTH(description) <= 1000),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE TRIGGER set_updated_at_category 
-    BEFORE UPDATE ON category 
+CREATE TRIGGER set_updated_at_users
+    BEFORE UPDATE ON users
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+-- region
 CREATE TABLE region (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name TEXT NOT NULL CHECK (LENGTH(name) <= 255),
@@ -56,56 +39,36 @@ CREATE TABLE region (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE TRIGGER set_updated_at_region 
-    BEFORE UPDATE ON region 
+CREATE TRIGGER set_updated_at_region
+    BEFORE UPDATE ON region
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TABLE metro_station (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name TEXT NOT NULL CHECK (LENGTH(name) <= 100),
-    latitude DECIMAL(10,8) NOT NULL CHECK (latitude BETWEEN -90 AND 90),
-    longitude DECIMAL(11,8) NOT NULL CHECK (longitude BETWEEN -180 AND 180),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-CREATE TRIGGER set_updated_at_metro_station 
-    BEFORE UPDATE ON metro_station 
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TABLE housing_complex (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name TEXT NOT NULL CHECK (LENGTH(name) <= 255),
-    description TEXT CHECK (LENGTH(description) <= 2000),
-    year_built INT CHECK (year_built BETWEEN 1800 AND 2100),
-    region_id UUID NOT NULL REFERENCES region(id) ON DELETE CASCADE,
-    latitude DECIMAL(10,8) CHECK (latitude BETWEEN -90 AND 90),
-    longitude DECIMAL(11,8) CHECK (longitude BETWEEN -180 AND 180),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    developer TEXT CHECK (LENGTH(developer) <= 255),
-    address TEXT CHECK (LENGTH(address) <= 255),
-    starting_price BIGINT CHECK (starting_price >= 0),
-    image_urls TEXT[]
-);
-CREATE TRIGGER set_updated_at_housing_complex 
-    BEFORE UPDATE ON housing_complex 
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
+-- location
 CREATE TABLE location (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     region_id UUID NOT NULL REFERENCES region(id) ON DELETE CASCADE,
-    housing_complex_id UUID REFERENCES housing_complex(id) ON DELETE SET NULL,
-    street TEXT NOT NULL CHECK (LENGTH(street) <= 255),
-    house_number TEXT NOT NULL CHECK (LENGTH(house_number) <= 50),
     latitude DECIMAL(10,8) CHECK (latitude BETWEEN -90 AND 90),
     longitude DECIMAL(11,8) CHECK (longitude BETWEEN -180 AND 180),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE TRIGGER set_updated_at_location 
-    BEFORE UPDATE ON location 
+CREATE TRIGGER set_updated_at_location
+    BEFORE UPDATE ON location
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+-- metro_station (depends on location)
+CREATE TABLE metro_station (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT NOT NULL CHECK (LENGTH(name) <= 100),
+    location_id UUID NOT NULL REFERENCES location(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TRIGGER set_updated_at_metro_station
+    BEFORE UPDATE ON metro_station
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- location_metro (many-to-many)
 CREATE TABLE location_metro (
     location_id UUID NOT NULL REFERENCES location(id) ON DELETE CASCADE,
     metro_station_id UUID NOT NULL REFERENCES metro_station(id) ON DELETE CASCADE,
@@ -113,57 +76,89 @@ CREATE TABLE location_metro (
     PRIMARY KEY (location_id, metro_station_id)
 );
 
+-- housing_complex (depends on location)
+CREATE TABLE housing_complex (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT NOT NULL CHECK (LENGTH(name) <= 255),
+    description TEXT CHECK (LENGTH(description) <= 2000),
+    year_built INT CHECK (year_built BETWEEN 1800 AND 2100),
+    location_id UUID NOT NULL REFERENCES location(id) ON DELETE CASCADE,
+    developer TEXT CHECK (LENGTH(developer) <= 255),
+    address TEXT CHECK (LENGTH(address) <= 255),
+    starting_price BIGINT CHECK (starting_price >= 0),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TRIGGER set_updated_at_housing_complex
+    BEFORE UPDATE ON housing_complex
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- profile (depends on users)
+CREATE TABLE profile (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE UNIQUE,
+    first_name TEXT CHECK (LENGTH(first_name) <= 100),
+    last_name TEXT CHECK (LENGTH(last_name) <= 100),
+    phone TEXT CHECK (LENGTH(phone) <= 20),
+    avatar_url TEXT
+        CHECK (LENGTH(avatar_url) <= 1024),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TRIGGER set_updated_at_profile
+    BEFORE UPDATE ON profile
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- offer (depends on users, location, housing_complex)
 CREATE TABLE offer (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     location_id UUID NOT NULL REFERENCES location(id) ON DELETE CASCADE,
-    category_id UUID NOT NULL REFERENCES category(id) ON DELETE CASCADE,
+    housing_complex_id UUID REFERENCES housing_complex(id) ON DELETE SET NULL,
     title TEXT NOT NULL CHECK (LENGTH(title) <= 255),
     description TEXT CHECK (LENGTH(description) <= 5000),
     price BIGINT NOT NULL CHECK (price >= 0),
     area DECIMAL(10,2) NOT NULL CHECK (area > 0),
+    address TEXT NOT NULL CHECK (LENGTH(address) <= 255),
     rooms INT NOT NULL CHECK (rooms >= 0),
-    propert_type property_type_enum NOT NULL,
+    property_type property_type_enum NOT NULL,
     offer_type offer_type_enum NOT NULL,
     status offer_status_enum NOT NULL DEFAULT 'active',
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    image_urls TEXT[] NOT NULL,
     floor INT CHECK (floor >= 0),
     total_floors INT CHECK (total_floors >= 0),
     deposit BIGINT CHECK (deposit >= 0),
     commission BIGINT CHECK (commission >= 0),
     rental_period TEXT CHECK (LENGTH(rental_period) <= 100),
-    living_area  DECIMAL(10,2)  CHECK (living_area >= 0),
-    kitchen_area  DECIMAL(10,2) CHECK (kitchen_area >= 0)
+    living_area DECIMAL(10,2) CHECK (living_area >= 0),
+    kitchen_area DECIMAL(10,2) CHECK (kitchen_area >= 0),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE TRIGGER set_updated_at_offer 
-    BEFORE UPDATE ON offer 
+CREATE TRIGGER set_updated_at_offer
+    BEFORE UPDATE ON offer
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TABLE photo (
+-- Photos
+CREATE TABLE offer_photo (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     offer_id UUID NOT NULL REFERENCES offer(id) ON DELETE CASCADE,
-    url TEXT NOT NULL 
-        CHECK (LENGTH(url) <= 1024)
-        CHECK (url ~ '/^[\w.-]+(\.[\w]{2,}){1,2}(\/.*)?$/'),
+    url TEXT NOT NULL
+        CHECK (LENGTH(url) <= 1024),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE TRIGGER set_updated_at_photo 
-    BEFORE UPDATE ON photo 
+CREATE TRIGGER set_updated_at_offer_photo
+    BEFORE UPDATE ON offer_photo
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
---Заготовка на будущее
-/*CREATE TABLE review (
+
+CREATE TABLE complex_photo (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    offer_id UUID NOT NULL REFERENCES offer(id) ON DELETE CASCADE,
-    rating INT CHECK (rating BETWEEN 1 AND 5),
-    comment TEXT CHECK (LENGTH(comment) <= 1000),
+    complex_id UUID NOT NULL REFERENCES housing_complex(id) ON DELETE CASCADE,
+    url TEXT NOT NULL
+        CHECK (LENGTH(url) <= 1024),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE TRIGGER set_updated_at_review 
-    BEFORE UPDATE ON review 
+CREATE TRIGGER set_updated_at_complex_photo
+    BEFORE UPDATE ON complex_photo
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
- */

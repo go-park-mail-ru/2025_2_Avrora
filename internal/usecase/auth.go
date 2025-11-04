@@ -3,7 +3,6 @@ package usecase
 import (
 	"context"
 	"errors"
-	"strconv"
 
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/domain"
 	"go.uber.org/zap"
@@ -14,6 +13,7 @@ var (
 	ErrInvalidCredentials  = errors.New("неправильные email или пароль")
 	ErrInvalidInput        = errors.New("невалидные данные")
 	ErrServerSideError     = errors.New("серверная ошибка")
+	ErrUserNotFound        = errors.New("пользователь не найден")
 )
 
 func (uc *authUsecase) Register(ctx context.Context, email, password string) error {
@@ -34,7 +34,7 @@ func (uc *authUsecase) Register(ctx context.Context, email, password string) err
 
 	user := domain.User{
 		Email:     email,
-		Password:  hashed,
+		PasswordHash:  hashed,
 	}
 
 	return uc.userRepo.Create(ctx, &user)
@@ -50,12 +50,12 @@ func (uc *authUsecase) Login(ctx context.Context, email, password string) (strin
 		return "", err
 	}
 
-	if !uc.passwordHasher.Compare(user.Password, password) {
+	if !uc.passwordHasher.Compare(user.PasswordHash, password) {
 		uc.log.Error(ctx, "invalid credentials", zap.Error(err))
 		return "", ErrInvalidCredentials
 	}
 
-	return uc.jwtService.GenerateJWT(strconv.Itoa(user.ID))
+	return uc.jwtService.GenerateJWT(user.ID)
 }
 
 func (uc *authUsecase) Logout(ctx context.Context) (string, error) {

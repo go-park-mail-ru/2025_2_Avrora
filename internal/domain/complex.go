@@ -1,26 +1,28 @@
 package domain
 
-import "time"
+import (
+	"errors"
+	"time"
+)
 
-type Complex struct {
-	ID            int
-	Description   string
+type HousingComplex struct {
+	ID            string    // UUID
 	Name          string
-	Address       string
-	Metro         string
+	Description   string
+	YearBuilt     *int      // nullable
+	LocationID    string    // UUID
 	Developer     string
-	BuiltYear     int
-	ImageURL      []string
-	StartingPrice float64
+	Address       string
+	StartingPrice *int64	// nullable
+	ImageURLs     []string
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 }
 
-// комплекс в ленте
 type ComplexInFeed struct {
-	ID            int
+	ID            string
 	Name          string
-	StartingPrice float64
+	StartingPrice *int64
 	Address       string
 	Metro         string
 	ImageURL      string
@@ -29,5 +31,13 @@ type ComplexInFeed struct {
 }
 
 type ComplexesInFeed struct {
+	Meta struct {
+		Total  int
+		Offset int
+	}
 	Complexes []ComplexInFeed
 }
+
+var (
+	ErrComplexNotFound = errors.New("housing complex not found")
+)
