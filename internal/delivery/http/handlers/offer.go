@@ -19,6 +19,28 @@ func (o *offerHandler) GetOffers(w http.ResponseWriter, r *http.Request) {
 		response.HandleError(w, err, http.StatusBadRequest, "no page")
 		return
 	}
+	q := r.URL.Query()
+
+	// Если в запросе есть хоть один фильтрующий параметр то мы вызываем FilterOffers
+	filterKeys := []string{
+		"offer_type", "property_type", "status",
+		"price_min", "price_max",
+		"area_min", "area_max",
+		"address",
+	}
+
+	hasFilter := false
+	for _, key := range filterKeys {
+		if q.Get(key) != "" {
+			hasFilter = true
+			break
+		}
+	}
+
+	if hasFilter {
+		o.FilterOffers(w, r)
+		return
+	}
 	limit, err := parseIntQueryParam(r, "limit", 10)
 	if err != nil {
 		o.logger.Error(r.Context(), "invalid or no limit", zap.Error(err))

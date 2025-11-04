@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/domain"
@@ -240,7 +241,7 @@ func scanOfferRow(scanner interface {
 		deposit, commission     *int64
 		rentalPeriod            *string
 		livingArea, kitchenArea *float64
-		imageURLs               []string  // ← Change from pq.StringArray to []string
+		imageURLs               []string // ← Change from pq.StringArray to []string
 		offer                   domain.Offer
 	)
 
@@ -590,4 +591,104 @@ func (r *OfferRepository) ListByUserID(ctx context.Context, userID string, page,
 		},
 		Offers: offers,
 	}, nil
-}	
+}
+
+// Фильтрация
+func (r *OfferRepository) FilterOffers(ctx context.Context, f *domain.OfferFilter, limit, offset int) ([]domain.OfferInFeed, error) {
+	baseQuery := `
+		SELECT 
+			o.id, o.user_id, o.offer_type, o.property_type, o.price, o.area, o.rooms,
+			o.floor, o.total_floors, o.address,
+			ms.name AS metro, op.url AS image_url,
+			o.created_at, o.updated_at
+		FROM offer o
+		LEFT JOIN (
+			SELECT DISTINCT ON (location_id)
+				location_id, metro_station_id
+			FROM location_metro
+			ORDER BY location_id, distance_meters ASC
+		) lm ON lm.location_id = o.location_id
+		LEFT JOIN metro_station ms ON ms.id = lm.metro_station_id
+		LEFT JOIN (
+			SELECT DISTINCT ON (offer_id)
+				offer_id, url
+			FROM offer_photo
+			ORDER BY offer_id, created_at ASC
+		) op ON op.offer_id = o.id
+		WHERE 1=1
+	`
+
+	args := []any{}
+	argIndex := 1
+
+	if f.OfferType != nil {
+		baseQuery += fmt.Sprintf(" AND o.offer_type = $%d", argIndex)
+		args = append(args, *f.OfferType)
+		argIndex++
+	}
+	if f.PropertyType != nil {
+		baseQuery += fmt.Sprintf(" AND o.property_type = $%d", argIndex)
+		args = append(args, *f.PropertyType)
+		argIndex++
+	}
+	if f.Rooms != nil {
+		baseQuery += fmt.Sprintf(" AND o.rooms = $%d", argIndex)
+		args = append(args, *f.Rooms)
+		argIndex++
+	}
+	if f.PriceMin != nil {
+		baseQuery += fmt.Sprintf(" AND o.price >= $%d", argIndex)
+		args = append(args, *f.PriceMin)
+		argIndex++
+	}
+	if f.PriceMax != nil {
+		baseQuery += fmt.Sprintf(" AND o.price <= $%d", argIndex)
+		args = append(args, *f.PriceMax)
+		argIndex++
+	}
+	if f.AreaMin != nil {
+		baseQuery += fmt.Sprintf(" AND o.area >= $%d", argIndex)
+		args = append(args, *f.AreaMin)
+		argIndex++
+	}
+	if f.AreaMax != nil {
+		baseQuery += fmt.Sprintf(" AND o.area <= $%d", argIndex)
+		args = append(args, *f.AreaMax)
+		argIndex++
+	}
+	if f.Address != nil {
+		baseQuery += fmt.Sprintf(" AND o.address ILIKE $%d", argIndex)
+		args = append(args, "%"+*f.Address+"%")
+		argIndex++
+	}
+	if f.Status != nil {
+		baseQuery += fmt.Sprintf(" AND o.status = $%d", argIndex)
+		args = append(args, *f.Status)
+		argIndex++
+	}
+	if f.Utug != nil {
+		// гипотетическая колонка o.utug (BOOLEAN)
+		baseQuery += fmt.Sprintf(" AND o.utug = $%d", argIndex)
+		args = append(args, *f.Utug)
+		argIndex++
+	}
+
+	// Pagination
+	baseQuery += fmt.Sprintf(" ORDER BY o.created_at DESC LIMIT $%d OFFSET $%d", argIndex, argIndex+1)
+	args = append(args, limit, offset)
+
+	rows, err := r.db.Query(ctx, baseQuery, args...)
+	if err != nil {
+		r.log.Error(ctx, "failed to filter offers", zap.Error(err))
+		return nil, err
+	}
+	defer rows.Close()
+
+	offers, err := scanOffersInFeed(rows)
+	if err != nil {
+		r.log.Error(ctx, "failed to scan filtered offers", zap.Error(err))
+		return nil, err
+	}
+
+	return offers, nil
+}
