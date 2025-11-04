@@ -14,3 +14,9 @@ func AddressToLocation(address string) *domain.Location {
 		Longitude: 37.61760000,
 	}
 }
+
+func AddressToComplex(address string) *domain.HousingComplex {
+	return &domain.HousingComplex{
+		ID: "50000000-0000-0000-0000-000000000001",
+	}
+}

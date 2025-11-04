@@ -482,7 +482,7 @@ func (r *OfferRepository) Create(ctx context.Context, offer *domain.Offer) error
 		}
 
 		r.log.Info(ctx, "created offer", zap.String("id", offer.ID))
-		return nil // triggers COMMIT
+		return nil
 	})
 }
 
@@ -514,7 +514,7 @@ func (r *OfferRepository) Update(ctx context.Context, offer *domain.Offer) error
 		)
 		if err != nil {
 			r.log.Error(ctx, "failed to update offer", zap.String("id", offer.ID), zap.Error(err))
-			return err // triggers ROLLBACK
+			return err
 		}
 
 		_, _ = tx.Exec(ctx, "DELETE FROM offer_photo WHERE offer_id = $1", offer.ID)

@@ -66,19 +66,25 @@ func (o *offerHandler) CreateOffer(w http.ResponseWriter, r *http.Request) {
 	// где то тут надо из адреса сделать location ???
 	// то же самое с комлексом
 	offer := &domain.Offer{
-		Title:        req.Title,
-		Description:  req.Description,
-		ImageURLs:    req.ImageURLs,
-		LocationID:   utils.AddressToLocation(req.Address).ID,
-		Price:        int64(req.Price),
-		Area:         req.Area,
-		Rooms:        req.Rooms,
-		Address:      req.Address,
-		OfferType:    domain.OfferType(req.OfferType),
-		PropertyType: domain.PropertyType(req.PropertyType),
-		Floor:        &req.Floor,
-		TotalFloors:  &req.TotalFloors,
-		UserID:       req.UserID,
+		Title:            req.Title,
+		Description:      req.Description,
+		ImageURLs:        req.ImageURLs,
+		HousingComplexID: &utils.AddressToComplex(req.Address).ID,
+		LocationID:       utils.AddressToLocation(req.Address).ID,
+		Price:            int64(req.Price),
+		Area:             req.Area,
+		Rooms:            req.Rooms,
+		Address:          req.Address,
+		OfferType:        domain.OfferType(req.OfferType),
+		PropertyType:     domain.PropertyType(req.PropertyType),
+		Floor:            &req.Floor,
+		TotalFloors:      &req.TotalFloors,
+		KitchenArea:      &req.KitchenArea,
+		LivingArea:       &req.LivingArea,
+		Deposit:          &req.Deposit,
+		Commission:       &req.Commission,
+		RentalPeriod:     &req.RentalPeriod,
+		UserID:           req.UserID,
 	}
 
 	if err := o.offerUsecase.Create(r.Context(), offer); err != nil {

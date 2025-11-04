@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/domain"
 	"github.com/google/uuid"
@@ -142,6 +143,9 @@ func (uc *offerUsecase) Create(ctx context.Context, offer *domain.Offer) error {
 		uc.log.Warn(ctx, "empty offer title")
 		return domain.ErrInvalidInput
 	}
+	fmt.Println(offer.UserID)
+	fmt.Println(offer.Price)
+	fmt.Println(offer.Area)
 	if offer.UserID == "" || offer.Price <= 0 || offer.Area <= 0 {
 		uc.log.Warn(ctx, "invalid offer fields")
 		return domain.ErrInvalidInput
