@@ -44,6 +44,7 @@ type Offer struct {
 	RentalPeriod     *string  // nullable
 	LivingArea       *float64 // nullable
 	KitchenArea      *float64 // nullable
+	Metro            *string
 	ImageURLs        []string
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
