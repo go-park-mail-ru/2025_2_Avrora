@@ -83,9 +83,9 @@ func main() {
 	// └──────────────────┘
 
 	//Offers
-	mux.HandleFunc("/api/v1/offers", authMW(offerHandler.GetOffers))
+	mux.HandleFunc("/api/v1/offers", offerHandler.GetOffers)
 	mux.HandleFunc("/api/v1/offers/create", authMW(offerHandler.CreateOffer))
-	mux.HandleFunc("/api/v1/offers/", authMW(offerHandler.GetOffer))
+	mux.HandleFunc("/api/v1/offers/", offerHandler.GetOffer)
 	mux.HandleFunc("/api/v1/offers/delete/", authMW(offerHandler.DeleteOffer))
 	mux.HandleFunc("/api/v1/offers/update/", authMW(offerHandler.UpdateOffer))
 
@@ -97,15 +97,14 @@ func main() {
 	mux.HandleFunc("/api/v1/profile/myoffers/", authMW(offerHandler.GetMyOffers))
 
 	//Complex
-	mux.HandleFunc("/api/v1/complexes/list", authMW(complexHandler.ListComplexes))
+	mux.HandleFunc("/api/v1/complexes/list", complexHandler.ListComplexes)
 	mux.HandleFunc("/api/v1/complexes/create", authMW(complexHandler.CreateComplex))
-	mux.HandleFunc("/api/v1/complexes/", authMW(complexHandler.GetComplexByID))
+	mux.HandleFunc("/api/v1/complexes/", complexHandler.GetComplexByID)
 	mux.HandleFunc("/api/v1/complexes/update/", authMW(complexHandler.UpdateComplex))
 	mux.HandleFunc("/api/v1/complexes/delete/", authMW(complexHandler.DeleteComplex))
 
 	// Protected image file server
-	imageFileServer := http.StripPrefix("/api/v1/image/", http.FileServer(http.Dir("image/")))
-	mux.Handle("/api/v1/image/", imageFileServer)
+	mux.Handle("/api/v1/image/", handlers.RestrictedImageServer("./image"))
 	imageHandler := handlers.NewImageHandler(usecaseLogger, "http://localhost:8080", "./image")
 	mux.HandleFunc("/api/v1/image/upload", authMW(imageHandler.UploadImage))
 
