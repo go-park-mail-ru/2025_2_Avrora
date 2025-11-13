@@ -17,8 +17,8 @@ type CreateOfferRequest struct {
 	KitchenArea      float64  `json:"kitchen_area"`
 	Price            float64  `json:"price"`
 	Description      string   `json:"description"`
-	Deposit          int64  `json:"deposit"`
-	Commission       int64  `json:"commission"`
+	Deposit          int64    `json:"deposit"`
+	Commission       int64    `json:"commission"`
 	RentalPeriod     string   `json:"rental_period"`
 	ImageURLs        []string `json:"image_urls"`
 }
@@ -42,6 +42,7 @@ type FullOfferResponse struct {
 	Deposit          float64  `json:"deposit"`
 	Commission       float64  `json:"commission"`
 	RentalPeriod     string   `json:"rental_period"`
+	Metro            string   `json:"metro"`
 	ImageURLs        []string `json:"image_urls"`
 }
 
