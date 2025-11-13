@@ -14,7 +14,7 @@ func (h *authHandler) Register(w http.ResponseWriter, r *http.Request) {
 	var req RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		h.logger.Error(r.Context(), "invalid JSON", zap.Error(err))
-		response.HandleError(w, err, http.StatusBadRequest, "invalid JSON")
+		response.HandleError(w, err, http.StatusBadRequest, ErrInvalidJSON.Error())
 		return
 	}
 	

@@ -38,14 +38,14 @@ func (h *ImageHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
 
 	if err := r.ParseMultipartForm(MAX_SIZE); err != nil {
 		h.logger.Error(ctx, "failed to parse multipart form", zap.Error(err))
-		response.HandleError(w, err, http.StatusBadRequest, "could not parse multipart form")
+		response.HandleError(w, err, http.StatusBadRequest, "не получилось загрузить картинку")
 		return
 	}
 
 	file, header, err := r.FormFile("image")
 	if err != nil {
 		h.logger.Error(ctx, "failed to get form file", zap.Error(err))
-		response.HandleError(w, err, http.StatusBadRequest, "could not get form file")
+		response.HandleError(w, err, http.StatusBadRequest, "не получилось загрузить картинку")
 		return
 	}
 	defer file.Close()
@@ -61,14 +61,14 @@ func (h *ImageHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
 	out, err := os.Create(savePath)
 	if err != nil {
 		h.logger.Error(ctx, "failed to create file", zap.Error(err))
-		response.HandleError(w, err, http.StatusInternalServerError, "could not save file")
+		response.HandleError(w, err, http.StatusInternalServerError, "не удалось сохранить картинку")
 		return
 	}
 	defer out.Close()
 
 	if _, err = io.Copy(out, file); err != nil {
 		h.logger.Error(ctx, "failed to copy file", zap.Error(err))
-		response.HandleError(w, err, http.StatusInternalServerError, "could not save file")
+		response.HandleError(w, err, http.StatusInternalServerError, "не удалось сохранить картинку")
 		return
 	}
 
