@@ -60,11 +60,11 @@ func (h *authHandler) Login(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, usecase.ErrInvalidCredentials):
-			response.HandleError(w, err, http.StatusUnauthorized, "invalid credentials")
+			response.HandleError(w, err, http.StatusUnauthorized, usecase.ErrInvalidCredentials.Error())
 		case errors.Is(err, usecase.ErrInvalidInput):
-			response.HandleError(w, err, http.StatusBadRequest, "invalid input")
+			response.HandleError(w, err, http.StatusBadRequest, usecase.ErrInvalidInput.Error())
 		default:
-			response.HandleError(w, err, http.StatusInternalServerError, "server side error")
+			response.HandleError(w, err, http.StatusInternalServerError, usecase.ErrServerSideError.Error())
 		}
 		return
 	}
