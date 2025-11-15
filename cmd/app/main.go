@@ -7,7 +7,7 @@ import (
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/db"
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/handlers"
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/middleware"
-	request_id "github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/middleware/request"
+	_ "github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/middleware/request"
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/utils"
 	logger "github.com/go-park-mail-ru/2025_2_Avrora/internal/log"
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/usecase"
@@ -31,6 +31,7 @@ func main() {
 	repoLogger := appLogger.With(zap.String("layer", "repository"))
 
 	corsOrigin := os.Getenv("CORS_ORIGIN")
+	_ = corsOrigin
 	port := os.Getenv("SERVER_PORT")
 
 	// Database
@@ -51,18 +52,21 @@ func main() {
 	offerRepo := db.NewOfferRepository(dbConn.GetDB(), repoLogger)
 	profileRepo := db.NewProfileRepository(dbConn.GetDB(), repoLogger)
 	complexRepo := db.NewHousingComplexRepository(dbConn.GetDB(), repoLogger)
+	supportTicketRepo := db.NewSupportTicketRepository(dbConn.GetDB(), repoLogger) // Add support ticket repository
 
 	// Usecases
 	authUC := usecase.NewAuthUsecase(userRepo, hasher, jwtService, usecaseLogger)
 	offerUC := usecase.NewOfferUsecase(offerRepo, usecaseLogger)
 	profileUC := usecase.NewProfileUsecase(profileRepo, hasher, usecaseLogger)
 	complexUC := usecase.NewHousingComplexUsecase(complexRepo, usecaseLogger)
+	supportTicketUC := usecase.NewSupportTicketUsecase(supportTicketRepo, usecaseLogger) // Add support ticket usecase
 
 	// Handlers
 	authHandler := handlers.NewAuthHandler(authUC, httpLogger)
 	offerHandler := handlers.NewOfferHandler(offerUC, httpLogger)
 	profileHandler := handlers.NewProfileHandler(profileUC, httpLogger)
 	complexHandler := handlers.NewComplexHandler(complexUC, httpLogger)
+	supportTicketHandler := handlers.NewSupportTicketHandler(supportTicketUC, httpLogger)
 
 	// Auth middleware helper
 	authMW := func(h http.HandlerFunc) http.HandlerFunc {
@@ -83,9 +87,9 @@ func main() {
 	// └──────────────────┘
 
 	//Offers
-	mux.HandleFunc("/api/v1/offers", authMW(offerHandler.GetOffers))
+	mux.HandleFunc("/api/v1/offers", offerHandler.GetOffers)
 	mux.HandleFunc("/api/v1/offers/create", authMW(offerHandler.CreateOffer))
-	mux.HandleFunc("/api/v1/offers/", authMW(offerHandler.GetOffer))
+	mux.HandleFunc("/api/v1/offers/", offerHandler.GetOffer)
 	mux.HandleFunc("/api/v1/offers/delete/", authMW(offerHandler.DeleteOffer))
 	mux.HandleFunc("/api/v1/offers/update/", authMW(offerHandler.UpdateOffer))
 
@@ -97,24 +101,33 @@ func main() {
 	mux.HandleFunc("/api/v1/profile/myoffers/", authMW(offerHandler.GetMyOffers))
 
 	//Complex
-	mux.HandleFunc("/api/v1/complexes/list", authMW(complexHandler.ListComplexes))
+	mux.HandleFunc("/api/v1/complexes/list", complexHandler.ListComplexes)
 	mux.HandleFunc("/api/v1/complexes/create", authMW(complexHandler.CreateComplex))
-	mux.HandleFunc("/api/v1/complexes/", authMW(complexHandler.GetComplexByID))
+	mux.HandleFunc("/api/v1/complexes/", complexHandler.GetComplexByID)
 	mux.HandleFunc("/api/v1/complexes/update/", authMW(complexHandler.UpdateComplex))
 	mux.HandleFunc("/api/v1/complexes/delete/", authMW(complexHandler.DeleteComplex))
 
+	// Support Tickets
+	mux.HandleFunc("/api/v1/support-tickets", supportTicketHandler.CreateSupportTicket)
+
+	mux.HandleFunc("/api/v1/support-tickets/all/", authMW(supportTicketHandler.GetAllSupportTickets))
+	mux.HandleFunc("/api/v1/support-tickets/my/", authMW(supportTicketHandler.GetUserSupportTickets))
+	mux.HandleFunc("/api/v1/support-tickets/", authMW(supportTicketHandler.GetSupportTicketByID))
+	mux.HandleFunc("/api/v1/support-tickets/delete/", authMW(supportTicketHandler.DeleteSupportTicket))
+
+	mux.HandleFunc("/api/v1/admin/support-tickets", authMW(supportTicketHandler.ListAllSupportTickets))
+	mux.HandleFunc("/api/v1/admin/support-tickets/status/", authMW(supportTicketHandler.UpdateSupportTicketStatus))
+
 	// Protected image file server
-	imageFileServer := http.StripPrefix("/api/v1/image/", http.FileServer(http.Dir("image/")))
-	mux.Handle("/api/v1/image/", imageFileServer)
+	mux.Handle("/api/v1/image/", handlers.RestrictedImageServer("./image"))
 	imageHandler := handlers.NewImageHandler(usecaseLogger, "http://localhost:8080", "./image")
 	mux.HandleFunc("/api/v1/image/upload", authMW(imageHandler.UploadImage))
 
-
 	var handler http.Handler = mux
-	handler = middleware.CorsMiddleware(handler, corsOrigin)
-	handler = request_id.RequestIDMiddleware(handler)
-	handler = middleware.LoggerMiddleware(appLogger)(handler)
+	mux.HandleFunc("/ws", handlers.WebSocketHandler)
+	go handlers.HandleMessages()
 
 	appLogger.Logger.Info("starting server", zap.String("port", port))
 	appLogger.Logger.Fatal("server stopped", zap.Error(http.ListenAndServe(":"+port, handler)))
+
 }

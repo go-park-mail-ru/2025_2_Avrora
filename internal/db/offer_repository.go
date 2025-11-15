@@ -24,10 +24,48 @@ const (
 		ORDER BY created_at DESC`
 
 	getOfferByIDQuery = `
-		SELECT
-			o.id,
-			o.user_id,
-			o.location_id,
+	SELECT
+		o.id,
+		o.user_id,
+		o.location_id,
+		o.housing_complex_id,
+		o.title,
+		o.description,
+		o.price,
+		o.area,
+		o.address,
+		o.rooms,
+		o.property_type,
+		o.offer_type,
+		o.status,
+		o.floor,
+		o.total_floors,
+		o.deposit,
+		o.commission,
+		o.rental_period,
+		o.living_area,
+		o.kitchen_area,
+		ms.name AS metro,  -- ← added metro station name
+		COALESCE(ARRAY_AGG(op.url) FILTER (WHERE op.url IS NOT NULL), '{}') AS image_urls,
+		o.created_at,
+		o.updated_at
+	FROM offer o
+	-- Join nearest metro station (same logic as listOffersQuery)
+	LEFT JOIN (
+		SELECT DISTINCT ON (location_id)
+			location_id,
+			metro_station_id
+		FROM location_metro
+		ORDER BY location_id, distance_meters ASC
+	) lm ON lm.location_id = o.location_id
+	LEFT JOIN metro_station ms ON ms.id = lm.metro_station_id
+	-- Photos
+	LEFT JOIN offer_photo op ON op.offer_id = o.id
+	WHERE o.id = $1
+	GROUP BY
+		o.id,
+		o.user_id,
+		o.location_id,
 			o.housing_complex_id,
 			o.title,
 			o.description,
@@ -45,33 +83,7 @@ const (
 			o.rental_period,
 			o.living_area,
 			o.kitchen_area,
-			COALESCE(ARRAY_AGG(op.url) FILTER (WHERE op.url IS NOT NULL), '{}') AS image_urls,
-			o.created_at,
-			o.updated_at
-		FROM offer o
-		LEFT JOIN offer_photo op ON op.offer_id = o.id
-		WHERE o.id = $1
-		GROUP BY
-			o.id,
-			o.user_id,
-			o.location_id,
-			o.housing_complex_id,
-			o.title,
-			o.description,
-			o.price,
-			o.area,
-			o.address,
-			o.rooms,
-			o.property_type,
-			o.offer_type,
-			o.status,
-			o.floor,
-			o.total_floors,
-			o.deposit,
-			o.commission,
-			o.rental_period,
-			o.living_area,
-			o.kitchen_area,
+			ms.name,  -- ← don't forget to GROUP BY metro!
 			o.created_at,
 			o.updated_at
 	`
@@ -241,7 +253,8 @@ func scanOfferRow(scanner interface {
 		deposit, commission     *int64
 		rentalPeriod            *string
 		livingArea, kitchenArea *float64
-		imageURLs               []string // ← Change from pq.StringArray to []string
+		metro                   *string   // ← ADDED: metro station name (nullable)
+		imageURLs               []string
 		offer                   domain.Offer
 	)
 
@@ -266,6 +279,7 @@ func scanOfferRow(scanner interface {
 		&rentalPeriod,
 		&livingArea,
 		&kitchenArea,
+		&metro,          // ← ADDED in correct position (after kitchenArea, before imageURLs)
 		&imageURLs,
 		&offer.CreatedAt,
 		&offer.UpdatedAt,
@@ -274,8 +288,7 @@ func scanOfferRow(scanner interface {
 		return nil, err
 	}
 
-	offer.ImageURLs = imageURLs
-
+	// Assign nullable fields
 	offer.HousingComplexID = housingComplexID
 	offer.Floor = floor
 	offer.TotalFloors = totalFloors
@@ -284,6 +297,9 @@ func scanOfferRow(scanner interface {
 	offer.RentalPeriod = rentalPeriod
 	offer.LivingArea = livingArea
 	offer.KitchenArea = kitchenArea
+	offer.Metro = metro
+
+	offer.ImageURLs = imageURLs
 
 	return &offer, nil
 }
