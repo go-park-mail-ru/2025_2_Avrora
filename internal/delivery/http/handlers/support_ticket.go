@@ -115,11 +115,11 @@ func (h *SupportTicketHandler) GetSupportTicketByID(w http.ResponseWriter, r *ht
 	ticket, err := h.usecase.GetSupportTicketByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, domain.ErrSupportTicketNotFound) {
-			h.errorResponse(w, http.StatusNotFound, "Support ticket not found", err)
+			response.HandleError(w, err, http.StatusNotFound, "тикет не найден")
 			return
 		}
 		h.log.Error(ctx, "failed to get support ticket", zap.String("ticket_id", id), zap.Error(err))
-		h.errorResponse(w, http.StatusInternalServerError, "Failed to get support ticket", err)
+		response.HandleError(w, err, http.StatusInternalServerError, "ошибка получения тикета")
 		return
 	}
 
@@ -141,7 +141,7 @@ func (h *SupportTicketHandler) GetUserSupportTickets(w http.ResponseWriter, r *h
 			zap.Int("page", page),
 			zap.Int("limit", limit),
 			zap.Error(err))
-		h.errorResponse(w, http.StatusInternalServerError, "Failed to get support tickets", err)
+		response.HandleError(w, err, http.StatusInternalServerError, "ошибка получения тикетов")
 		return
 	}
 
@@ -200,7 +200,7 @@ func (h *SupportTicketHandler) GetAllSupportTickets(w http.ResponseWriter, r *ht
 			zap.Int("page", page),
 			zap.Int("limit", limit),
 			zap.Error(err))
-		h.errorResponse(w, http.StatusInternalServerError, "Failed to retrieve support tickets", err)
+		response.HandleError(w, err, http.StatusInternalServerError, "ошибка получения тикетов")
 		return
 	}
 
@@ -461,18 +461,18 @@ func (h *SupportTicketHandler) DeleteSupportTicket(w http.ResponseWriter, r *htt
 	_, err := h.usecase.GetSupportTicketByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, domain.ErrSupportTicketNotFound) {
-			h.errorResponse(w, http.StatusNotFound, "Support ticket not found", err)
+			response.HandleError(w, err, http.StatusNotFound, "тикет не найден")
 			return
 		}
 		h.log.Error(ctx, "failed to get ticket for deletion", zap.String("ticket_id", id), zap.Error(err))
-		h.errorResponse(w, http.StatusInternalServerError, "Failed to get ticket", err)
+		response.HandleError(w, err, http.StatusInternalServerError, "ошибка получения тикета")
 		return
 	}
 
 	// Delete ticket
 	if err := h.usecase.DeleteSupportTicket(ctx, id); err != nil {
 		if errors.Is(err, domain.ErrSupportTicketNotFound) {
-			h.errorResponse(w, http.StatusNotFound, "Support ticket not found", err)
+			response.HandleError(w, err, http.StatusNotFound, "тикет не найден")
 			return
 		}
 		h.log.Error(ctx, "failed to delete support ticket", zap.String("ticket_id", id), zap.Error(err))
@@ -502,7 +502,7 @@ func (h *SupportTicketHandler) ListAllSupportTickets(w http.ResponseWriter, r *h
 			zap.Int("page", page),
 			zap.Int("limit", limit),
 			zap.Error(err))
-		h.errorResponse(w, http.StatusInternalServerError, "Failed to list support tickets", err)
+		response.HandleError(w, err, http.StatusInternalServerError, "ошибка получения тикетов")
 		return
 	}
 
@@ -543,28 +543,10 @@ func (h *SupportTicketHandler) ListAllSupportTickets(w http.ResponseWriter, r *h
 func (h *SupportTicketHandler) decodeJSON(w http.ResponseWriter, r *http.Request, v interface{}) error {
 	if err := json.NewDecoder(r.Body).Decode(v); err != nil {
 		h.log.Warn(r.Context(), "failed to decode JSON", zap.Error(err))
-		h.errorResponse(w, http.StatusBadRequest, "Invalid JSON request body", err)
+		response.HandleError(w, err, http.StatusBadRequest, "невалидный JSON")
 		return err
 	}
 	return nil
-}
-
-func (h *SupportTicketHandler) errorResponse(w http.ResponseWriter, status int, message string, err error) {
-	response := struct {
-		Error   string `json:"error"`
-		Message string `json:"message"`
-	}{
-		Error:   http.StatusText(status),
-		Message: message,
-	}
-	
-	if err != nil {
-		h.log.Error(context.Background(), "detailed error", zap.Error(err))
-	}
-	
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(response)
 }
 
 func (h *SupportTicketHandler) getPaginationParams(r *http.Request) (int, int) {

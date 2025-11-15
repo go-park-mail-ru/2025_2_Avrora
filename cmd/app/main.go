@@ -117,12 +117,10 @@ func main() {
 	mux.HandleFunc("/api/v1/admin/support-tickets", authMW(supportTicketHandler.ListAllSupportTickets))
 	mux.HandleFunc("/api/v1/admin/support-tickets/status/", authMW(supportTicketHandler.UpdateSupportTicketStatus))
 
-
 	// Protected image file server
 	mux.Handle("/api/v1/image/", handlers.RestrictedImageServer("./image"))
 	imageHandler := handlers.NewImageHandler(usecaseLogger, "http://localhost:8080", "./image")
 	mux.HandleFunc("/api/v1/image/upload", authMW(imageHandler.UploadImage))
-
 
 	var handler http.Handler = mux
 	handler = middleware.CorsMiddleware(handler, corsOrigin)
