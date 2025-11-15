@@ -13,13 +13,15 @@ CREATE TYPE offer_type_enum AS ENUM ('sale', 'rent');
 CREATE TYPE offer_status_enum AS ENUM ('active', 'sold', 'archived');
 CREATE TYPE user_role_enum AS ENUM ('user', 'owner', 'realtor');
 CREATE TYPE property_type_enum AS ENUM ('house', 'apartment');
+CREATE TYPE support_ticket_category_enum AS ENUM ('bug', 'feature', 'general', 'billing');
+CREATE TYPE support_ticket_status_enum AS ENUM ('open', 'in_progress', 'closed');
 
 -- users
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     email TEXT NOT NULL UNIQUE
         CHECK (LENGTH(email) <= 255)
-        CHECK (email ~ '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'),
+        CHECK (email ~ '@'),
     password_hash TEXT NOT NULL CHECK (LENGTH(password_hash) <= 255),
     role user_role_enum NOT NULL DEFAULT 'user',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -161,4 +163,33 @@ CREATE TABLE complex_photo (
 );
 CREATE TRIGGER set_updated_at_complex_photo
     BEFORE UPDATE ON complex_photo
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+ -- Поддержка 
+
+CREATE TABLE support_ticket (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    signed_email TEXT NOT NULL CHECK (LENGTH(signed_email) <= 255 AND signed_email ~ '@'),
+    response_email TEXT NOT NULL CHECK (LENGTH(response_email) <= 255 AND response_email ~ '@'),
+    name TEXT NOT NULL CHECK (LENGTH(name) > 0 AND LENGTH(name) <= 255),
+    category support_ticket_category_enum NOT NULL DEFAULT 'general',
+    description TEXT NOT NULL CHECK (LENGTH(description) > 0 AND LENGTH(description) <= 5000),
+    status support_ticket_status_enum NOT NULL DEFAULT 'open',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TRIGGER set_updated_at_support_ticket
+    BEFORE UPDATE ON support_ticket
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TABLE support_ticket_photo (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(), -- Unique identifier for the photo
+    ticket_id UUID NOT NULL REFERENCES support_ticket(id) ON DELETE CASCADE, -- Foreign key to the ticket
+    photo_url TEXT NOT NULL, -- URL or path to the photo (if storing references)
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), -- Timestamp when the photo was added
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TRIGGER set_updated_at_support_ticket_photo
+    BEFORE UPDATE ON support_ticket_photo
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

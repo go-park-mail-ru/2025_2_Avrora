@@ -51,18 +51,21 @@ func main() {
 	offerRepo := db.NewOfferRepository(dbConn.GetDB(), repoLogger)
 	profileRepo := db.NewProfileRepository(dbConn.GetDB(), repoLogger)
 	complexRepo := db.NewHousingComplexRepository(dbConn.GetDB(), repoLogger)
+	supportTicketRepo := db.NewSupportTicketRepository(dbConn.GetDB(), repoLogger) // Add support ticket repository
 
 	// Usecases
 	authUC := usecase.NewAuthUsecase(userRepo, hasher, jwtService, usecaseLogger)
 	offerUC := usecase.NewOfferUsecase(offerRepo, usecaseLogger)
 	profileUC := usecase.NewProfileUsecase(profileRepo, hasher, usecaseLogger)
 	complexUC := usecase.NewHousingComplexUsecase(complexRepo, usecaseLogger)
+	supportTicketUC := usecase.NewSupportTicketUsecase(supportTicketRepo, usecaseLogger) // Add support ticket usecase
 
 	// Handlers
 	authHandler := handlers.NewAuthHandler(authUC, httpLogger)
 	offerHandler := handlers.NewOfferHandler(offerUC, httpLogger)
 	profileHandler := handlers.NewProfileHandler(profileUC, httpLogger)
 	complexHandler := handlers.NewComplexHandler(complexUC, httpLogger)
+	supportTicketHandler := handlers.NewSupportTicketHandler(supportTicketUC, httpLogger)
 
 	// Auth middleware helper
 	authMW := func(h http.HandlerFunc) http.HandlerFunc {
@@ -102,6 +105,18 @@ func main() {
 	mux.HandleFunc("/api/v1/complexes/", complexHandler.GetComplexByID)
 	mux.HandleFunc("/api/v1/complexes/update/", authMW(complexHandler.UpdateComplex))
 	mux.HandleFunc("/api/v1/complexes/delete/", authMW(complexHandler.DeleteComplex))
+
+	// Support Tickets
+	mux.HandleFunc("/api/v1/support-tickets", supportTicketHandler.CreateSupportTicket)
+
+	mux.HandleFunc("/api/v1/support-tickets/all/", authMW(supportTicketHandler.GetAllSupportTickets))
+	mux.HandleFunc("/api/v1/support-tickets/my/", authMW(supportTicketHandler.GetUserSupportTickets))
+	mux.HandleFunc("/api/v1/support-tickets/", authMW(supportTicketHandler.GetSupportTicketByID))
+	mux.HandleFunc("/api/v1/support-tickets/delete/", authMW(supportTicketHandler.DeleteSupportTicket))
+
+	mux.HandleFunc("/api/v1/admin/support-tickets", authMW(supportTicketHandler.ListAllSupportTickets))
+	mux.HandleFunc("/api/v1/admin/support-tickets/status/", authMW(supportTicketHandler.UpdateSupportTicketStatus))
+
 
 	// Protected image file server
 	mux.Handle("/api/v1/image/", handlers.RestrictedImageServer("./image"))
