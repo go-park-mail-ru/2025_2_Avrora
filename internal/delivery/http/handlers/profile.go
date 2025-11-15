@@ -28,7 +28,7 @@ func (p *profileHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 	var req ProfileUpdate
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		p.log.Error(r.Context(), "invalid JSON", zap.Error(err))
-		response.HandleError(w, err, http.StatusBadRequest, "invalid JSON")
+		response.HandleError(w, err, http.StatusBadRequest, "неправильный формат JSON")
 		return
 	}
 
@@ -56,7 +56,7 @@ func (p *profileHandler) UpdateProfileSecurityByID(w http.ResponseWriter, r *htt
 	var req SecurityUpdate
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		p.log.Error(r.Context(), "invalid JSON", zap.Error(err))
-		response.HandleError(w, err, http.StatusBadRequest, "invalid JSON")
+		response.HandleError(w, err, http.StatusBadRequest, "неправильный формат JSON")
 		return
 	}
 
@@ -77,7 +77,7 @@ func (p *profileHandler) UpdateEmail(w http.ResponseWriter, r *http.Request) {
 	var req UpdateEmail
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		p.log.Error(r.Context(), "invalid JSON", zap.Error(err))
-		response.HandleError(w, err, http.StatusBadRequest, "invalid JSON")
+		response.HandleError(w, err, http.StatusBadRequest, "неправильный формат JSON")
 		return
 	}
 

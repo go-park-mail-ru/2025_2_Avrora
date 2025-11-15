@@ -18,12 +18,6 @@ const (
 		p.created_at, p.updated_at,
 		u.email`
 
-	getProfileByUserIDQuery = `
-		SELECT ` + selectProfileWithUser + `
-		FROM profile p
-		JOIN users u ON p.user_id = u.id
-		WHERE p.user_id = '$1'`
-
 	getUserAndProfileLeftJoinQuery = `
 		SELECT 
 			p.id,

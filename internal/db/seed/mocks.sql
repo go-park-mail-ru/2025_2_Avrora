@@ -29,8 +29,8 @@ INSERT INTO users (id, email, password_hash, role) VALUES
 
 -- Insert profiles
 INSERT INTO profile (user_id, first_name, last_name, phone, avatar_url) VALUES
-  ('40000000-0000-0000-0000-000000000001', 'Alex', 'Petrov', '+79001234567', 'http://37.139.40.252:8080/api/v1/image/default_avatar.jpg'),
-  ('40000000-0000-0000-0000-000000000002', 'Maria', 'Ivanova', '+79007654321', 'http://37.139.40.252:8080/api/v1/image/default_avatar.jpg');
+  ('40000000-0000-0000-0000-000000000001', 'Alex', 'Petrov', '+79001234567', 'https://homa-land.ru/api/v1/image/default_avatar.jpg'),
+  ('40000000-0000-0000-0000-000000000002', 'Maria', 'Ivanova', '+79007654321', 'https://homa-land.ru/api/v1/image/default_avatar.jpg');
 
 -- Insert housing complexes
 INSERT INTO housing_complex (id, name, description, year_built, location_id, developer, address, starting_price) VALUES
@@ -39,8 +39,8 @@ INSERT INTO housing_complex (id, name, description, year_built, location_id, dev
 
 -- Insert complex photos
 INSERT INTO complex_photo (complex_id, url) VALUES
-  ('50000000-0000-0000-0000-000000000001', 'http://37.139.40.252:8080/api/v1/image/default_offer.jpg'),
-  ('50000000-0000-0000-0000-000000000001', 'http://37.139.40.252:8080/api/v1/image/default_offer.jpg');
+  ('50000000-0000-0000-0000-000000000001', 'https://homa-land.ru/api/v1/image/default_offer.jpg'),
+  ('50000000-0000-0000-0000-000000000001', 'https://homa-land.ru/api/v1/image/default_offer.jpg');
 
 -- Insert offers
 INSERT INTO offer (
@@ -70,9 +70,9 @@ INSERT INTO offer (
 
 -- Insert offer photos
 INSERT INTO offer_photo (offer_id, url) VALUES
-  ('60000000-0000-0000-0000-000000000001', 'http://37.139.40.252:8080/api/v1/image/default_offer.jpg'),
-  ('60000000-0000-0000-0000-000000000001', 'http://37.139.40.252:8080/api/v1/image/default_offer.jpg'),
-  ('60000000-0000-0000-0000-000000000002', 'http://37.139.40.252:8080/api/v1/image/default_offer.jpg');
+  ('60000000-0000-0000-0000-000000000001', 'https://homa-land.ru/api/v1/image/default_offer.jpg'),
+  ('60000000-0000-0000-0000-000000000001', 'https://homa-land.ru/api/v1/image/default_offer.jpg'),
+  ('60000000-0000-0000-0000-000000000002', 'https://homa-land.ru/api/v1/image/default_offer.jpg');
 
 -- Дополнительные жилищные комплексы
 
@@ -86,9 +86,9 @@ INSERT INTO housing_complex (id, name, description, year_built, location_id, dev
 -- Фото для новых жилищных комплексов
 
 INSERT INTO complex_photo (complex_id, url) VALUES
-  ('50000000-0000-0000-0000-000000000002', 'http://37.139.40.252:8080/api/v1/image/default_complex.jpg'),
-  ('50000000-0000-0000-0000-000000000002', 'http://37.139.40.252:8080/api/v1/image/default_complex.jpg'),
-  ('50000000-0000-0000-0000-000000000003', 'http://37.139.40.252:8080/api/v1/image/default_complex.jpg');
+  ('50000000-0000-0000-0000-000000000002', 'https://homa-land.ru/api/v1/image/default_complex.jpg'),
+  ('50000000-0000-0000-0000-000000000002', 'https://homa-land.ru/api/v1/image/default_complex.jpg'),
+  ('50000000-0000-0000-0000-000000000003', 'https://homa-land.ru/api/v1/image/default_complex.jpg');
 
 -- Дополнительные объявления (offers)
 
@@ -144,10 +144,10 @@ INSERT INTO offer (
 -- Фото для новых объявлений
 
 INSERT INTO offer_photo (offer_id, url) VALUES
-  ('60000000-0000-0000-0000-000000000003', 'http://37.139.40.252:8080/api/v1/image/default_offer.jpg'),
-  ('60000000-0000-0000-0000-000000000003', 'http://37.139.40.252:8080/api/v1/image/default_offer1.jpg'),
-  ('60000000-0000-0000-0000-000000000004', 'http://37.139.40.252:8080/api/v1/image/default_offer2.jpg'),
-  ('60000000-0000-0000-0000-000000000005', 'http://37.139.40.252:8080/api/v1/image/default_offer3.jpg'),
-  ('60000000-0000-0000-0000-000000000005', 'http://37.139.40.252:8080/api/v1/image/default_offer4.jpg'),
-  ('60000000-0000-0000-0000-000000000005', 'http://37.139.40.252:8080/api/v1/image/default_offer5.jpg'),
-  ('60000000-0000-0000-0000-000000000006', 'http://37.139.40.252:8080/api/v1/image/default_offer6.jpg');
+  ('60000000-0000-0000-0000-000000000003', 'https://homa-land.ru/api/v1/image/default_offer.jpg'),
+  ('60000000-0000-0000-0000-000000000003', 'https://homa-land.ru/api/v1/image/default_offer1.jpg'),
+  ('60000000-0000-0000-0000-000000000004', 'https://homa-land.ru/api/v1/image/default_offer2.jpg'),
+  ('60000000-0000-0000-0000-000000000005', 'https://homa-land.ru/api/v1/image/default_offer3.jpg'),
+  ('60000000-0000-0000-0000-000000000005', 'https://homa-land.ru/api/v1/image/default_offer4.jpg'),
+  ('60000000-0000-0000-0000-000000000005', 'https://homa-land.ru/api/v1/image/default_offer5.jpg'),
+  ('60000000-0000-0000-0000-000000000006', 'https://homa-land.ru/api/v1/image/default_offer6.jpg');
