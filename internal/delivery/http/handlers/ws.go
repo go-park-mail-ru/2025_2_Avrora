@@ -12,9 +12,12 @@ var upgrader = websocket.Upgrader{
 }
 
 type RoomMessage struct {
-	Room     string `json:"room"`
-	Username string `json:"username"`
-	Text     string `json:"text"`
+	Room      string `json:"room"`
+	UserID    string `json:"userId"`
+	UserEmail string `json:"userEmail"`
+	UserName  string `json:"userName"`
+	Message   string `json:"message"`
+	Timestamp string `json:"timestamp"`
 }
 
 var Rooms = make(map[string]map[*websocket.Conn]bool)
