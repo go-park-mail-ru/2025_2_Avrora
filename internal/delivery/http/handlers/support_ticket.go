@@ -563,7 +563,7 @@ func (h *SupportTicketHandler) getPaginationParams(r *http.Request) (int, int) {
 		limit = 10
 	}
 	if limit > 50 {
-		limit = 50 // Maximum limit for performance
+		limit = 50
 	}
 
 	return page, limit

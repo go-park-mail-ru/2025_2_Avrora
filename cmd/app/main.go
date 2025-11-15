@@ -109,10 +109,10 @@ func main() {
 	// Support Tickets
 	mux.HandleFunc("/api/v1/support-tickets", supportTicketHandler.CreateSupportTicket)
 
-	mux.HandleFunc("/api/v1/support-tickets/all/", authMW(supportTicketHandler.GetAllSupportTickets))
-	mux.HandleFunc("/api/v1/support-tickets/my/", authMW(supportTicketHandler.GetUserSupportTickets))
-	mux.HandleFunc("/api/v1/support-tickets/", authMW(supportTicketHandler.GetSupportTicketByID))
-	mux.HandleFunc("/api/v1/support-tickets/delete/", authMW(supportTicketHandler.DeleteSupportTicket))
+	mux.HandleFunc("/api/v1/support-tickets/all/", supportTicketHandler.GetAllSupportTickets)
+	mux.HandleFunc("/api/v1/support-tickets/my/", supportTicketHandler.GetUserSupportTickets)
+	mux.HandleFunc("/api/v1/support-tickets/", supportTicketHandler.GetSupportTicketByID)
+	mux.HandleFunc("/api/v1/support-tickets/delete/", supportTicketHandler.DeleteSupportTicket)
 
 	mux.HandleFunc("/api/v1/admin/support-tickets", authMW(supportTicketHandler.ListAllSupportTickets))
 	mux.HandleFunc("/api/v1/admin/support-tickets/status/", authMW(supportTicketHandler.UpdateSupportTicketStatus))
@@ -120,7 +120,7 @@ func main() {
 	// Protected image file server
 	mux.Handle("/api/v1/image/", handlers.RestrictedImageServer("./image"))
 	imageHandler := handlers.NewImageHandler(usecaseLogger, "http://localhost:8080", "./image")
-	mux.HandleFunc("/api/v1/image/upload", authMW(imageHandler.UploadImage))
+	mux.HandleFunc("/api/v1/image/upload", imageHandler.UploadImage)
 
 	var handler http.Handler = mux
 	handler = middleware.CorsMiddleware(handler, corsOrigin)
