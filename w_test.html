@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>WebSocket Room Chat Test</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        #messages { border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: scroll; }
+        #input { margin-top: 10px; display: flex; gap: 10px; }
+        #input input { flex: 1; padding: 8px; }
+        #input button { padding: 8px 15px; }
+    </style>
+</head>
+<body>
+
+<h2>WebSocket Room Chat Test</h2>
+
+<div>
+    <label>Username:</label>
+    <input type="text" id="username" placeholder="your username">
+</div>
+
+<br>
+
+<div>
+    <label>Room:</label>
+    <input type="text" id="room" placeholder="room name" value="general">
+    <button onclick="connect()">Connect</button>
+</div>
+
+<br>
+
+<div id="messages"></div>
+
+<div id="input">
+    <input type="text" id="text" placeholder="Type message...">
+    <button onclick="sendMessage()">Send</button>
+</div>
+
+<script>
+    let ws;
+
+    function connect() {
+        const room = document.getElementById("room").value.trim();
+        if (!room) {
+            alert("Enter room name!");
+            return;
+        }
+
+        if (ws) ws.close();
+
+        ws = new WebSocket("ws://localhost:8080/ws?room=" + encodeURIComponent(room));
+
+        ws.onopen = () => log("WS OPEN (room: " + room + ")");
+        ws.onclose = () => log("WS CLOSED");
+        ws.onerror = (e) => log("WS ERROR: " + e);
+
+        ws.onmessage = (event) => log("RECV: " + event.data);
+    }
+
+    function sendMessage() {
+        if (!ws || ws.readyState !== WebSocket.OPEN) {
+            log("ERROR: WebSocket not open");
+            return;
+        }
+
+        const obj = {
+            room: document.getElementById("room").value,
+            username: document.getElementById("username").value,
+            text: document.getElementById("text").value
+        };
+
+        ws.send(JSON.stringify(obj));
+        log("SEND: " + JSON.stringify(obj));
+    }
+
+    function log(t) {
+        const box = document.getElementById("messages");
+        box.innerHTML += t + "<br>";
+        box.scrollTop = box.scrollHeight;
+    }
+</script>
+
+</body>
+</html>
+
