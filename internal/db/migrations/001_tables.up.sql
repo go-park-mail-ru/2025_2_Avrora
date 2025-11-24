@@ -162,3 +162,29 @@ CREATE TABLE complex_photo (
 CREATE TRIGGER set_updated_at_complex_photo
     BEFORE UPDATE ON complex_photo
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+--Добавление лайков
+CREATE TABLE offer_like (
+                            user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                            offer_id UUID NOT NULL REFERENCES offer(id) ON DELETE CASCADE,
+                            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+                            PRIMARY KEY (user_id, offer_id)
+);
+ALTER TABLE offer ADD COLUMN likes_count INT NOT NULL DEFAULT 0;
+CREATE OR REPLACE FUNCTION update_likes_count()
+    RETURNS TRIGGER AS $$
+BEGIN
+    IF TG_OP = 'INSERT' THEN
+        UPDATE offer SET likes_count = likes_count + 1 WHERE id = NEW.offer_id;
+    ELSIF TG_OP = 'DELETE' THEN
+        UPDATE offer SET likes_count = likes_count - 1 WHERE id = OLD.offer_id;
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_likes_count
+    AFTER INSERT OR DELETE ON offer_like
+    FOR EACH ROW EXECUTE FUNCTION update_likes_count();
+
+

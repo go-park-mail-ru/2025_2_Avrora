@@ -48,6 +48,8 @@ type Offer struct {
 	ImageURLs        []string
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
+	LikesCount       int  `json:"likes_count"`
+	IsLiked          bool `json:"is_liked"`
 }
 
 type OfferFilter struct {
@@ -61,6 +63,8 @@ type OfferFilter struct {
 	Status       *string  `json:"status"`
 	Utug         *bool    `json:"utug"`
 	Address      *string  `json:"address"`
+	Liked        bool
+	LikesCount   int
 }
 
 // For feed (simplified + joined data)
@@ -117,3 +121,9 @@ var (
 	ErrInvalidInput  = errors.New("invalid input")
 	ErrOfferNotFound = errors.New("offer not found")
 )
+
+type OfferLike struct {
+	UserID    string
+	OfferID   string
+	CreatedAt time.Time
+}

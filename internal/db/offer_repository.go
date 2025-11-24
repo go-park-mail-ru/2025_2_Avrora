@@ -48,7 +48,8 @@ const (
 		ms.name AS metro,  -- ← added metro station name
 		COALESCE(ARRAY_AGG(op.url) FILTER (WHERE op.url IS NOT NULL), '{}') AS image_urls,
 		o.created_at,
-		o.updated_at
+		o.updated_at,
+		o.likes_count
 	FROM offer o
 	-- Join nearest metro station (same logic as listOffersQuery)
 	LEFT JOIN (
@@ -85,7 +86,8 @@ const (
 			o.kitchen_area,
 			ms.name,  -- ← don't forget to GROUP BY metro!
 			o.created_at,
-			o.updated_at
+			o.updated_at,
+			o.likes_count
 	`
 
 	createOfferQuery = `
@@ -168,7 +170,8 @@ const (
 			ms.name AS metro,
 			op.url AS image_url,
 			o.created_at,
-			o.updated_at
+			o.updated_at,
+			o.likes_count
 		FROM offer o
 		LEFT JOIN (
 			SELECT DISTINCT ON (location_id)
@@ -253,7 +256,7 @@ func scanOfferRow(scanner interface {
 		deposit, commission     *int64
 		rentalPeriod            *string
 		livingArea, kitchenArea *float64
-		metro                   *string   // ← ADDED: metro station name (nullable)
+		metro                   *string // ← ADDED: metro station name (nullable)
 		imageURLs               []string
 		offer                   domain.Offer
 	)
@@ -279,10 +282,11 @@ func scanOfferRow(scanner interface {
 		&rentalPeriod,
 		&livingArea,
 		&kitchenArea,
-		&metro,          // ← ADDED in correct position (after kitchenArea, before imageURLs)
+		&metro, // ← ADDED in correct position (after kitchenArea, before imageURLs)
 		&imageURLs,
 		&offer.CreatedAt,
 		&offer.UpdatedAt,
+		&offer.LikesCount,
 	)
 	if err != nil {
 		return nil, err
@@ -707,4 +711,90 @@ func (r *OfferRepository) FilterOffers(ctx context.Context, f *domain.OfferFilte
 	}
 
 	return offers, nil
+}
+
+// ===== Луйки =====
+
+func (r *OfferRepository) HasLike(ctx context.Context, userID, offerID string) (bool, error) {
+	var exists bool
+	err := r.db.QueryRow(ctx,
+		"SELECT EXISTS (SELECT 1 FROM offer_like WHERE user_id = $1 AND offer_id = $2)",
+		userID, offerID,
+	).Scan(&exists)
+	if err != nil {
+		r.log.Error(ctx, "failed to checked like", zap.Error(err))
+		return false, err
+	}
+	return exists, nil
+}
+
+func (r *OfferRepository) AddLike(ctx context.Context, userID, offerID string) error {
+	_, err := r.db.Exec(ctx,
+		"INSERT INTO offer_like (user_id, offer_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+		userID, offerID,
+	)
+	if err != nil {
+		r.log.Error(ctx, "failed to add like", zap.Error(err))
+	}
+	return err
+}
+
+func (r *OfferRepository) RemoveLike(ctx context.Context, userID, offerID string) error {
+	_, err := r.db.Exec(ctx,
+		"DELETE FROM offer_like WHERE user_id = $1 AND offer_id = $2",
+		userID, offerID,
+	)
+	if err != nil {
+		r.log.Error(ctx, "failed to remove like", zap.Error(err))
+	}
+	return err
+}
+func (r *OfferRepository) ToggleLike(ctx context.Context, userID, offerID string) (bool, error) {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return false, err
+	}
+	defer tx.Rollback(ctx)
+
+	var exists bool
+	err = tx.QueryRow(ctx,
+		`SELECT EXISTS(SELECT 1 FROM offer_like 
+		 WHERE user_id = $1 AND offer_id = $2)`,
+		userID, offerID,
+	).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+
+	if exists {
+		_, err = tx.Exec(ctx,
+			`DELETE FROM offer_like WHERE user_id = $1 AND offer_id = $2`,
+			userID, offerID)
+		if err != nil {
+			return false, err
+		}
+	} else {
+		_, err = tx.Exec(ctx,
+			`INSERT INTO offer_like (user_id, offer_id) VALUES ($1, $2)`,
+			userID, offerID)
+		if err != nil {
+			return false, err
+		}
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	return !exists, nil // true → лайк поставлен, false → лайк убран
+}
+func (r *OfferRepository) IsLiked(ctx context.Context, userID, offerID string) (bool, error) {
+	var liked bool
+	err := r.db.QueryRow(
+		ctx,
+		`SELECT EXISTS(SELECT 1 FROM offer_like WHERE user_id=$1 AND offer_id=$2)`,
+		userID, offerID,
+	).Scan(&liked)
+	return liked, err
 }

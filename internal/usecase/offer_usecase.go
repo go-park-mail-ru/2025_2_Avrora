@@ -17,6 +17,8 @@ type IOfferRepository interface {
 	ListByUserID(ctx context.Context, userID string, page, limit int) (*domain.OffersInFeed, error)
 	GetByID(ctx context.Context, id string) (*domain.Offer, error)
 	FilterOffers(ctx context.Context, f *domain.OfferFilter, limit, offset int) ([]domain.OfferInFeed, error)
+	ToggleLike(ctx context.Context, userID, offerID string) (bool, error)
+	IsLiked(ctx context.Context, userID, offerID string) (bool, error)
 }
 
 type offerUsecase struct {

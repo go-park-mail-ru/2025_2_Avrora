@@ -103,11 +103,12 @@ func main() {
 	mux.HandleFunc("/api/v1/complexes/update/", authMW(complexHandler.UpdateComplex))
 	mux.HandleFunc("/api/v1/complexes/delete/", authMW(complexHandler.DeleteComplex))
 
+	mux.HandleFunc("/api/v1/offers/like", authMW(offerHandler.ToggleLike))
+	mux.HandleFunc("/api/v1/offers/is_liked", authMW(offerHandler.IsLiked))
 	// Protected image file server
 	mux.Handle("/api/v1/image/", handlers.RestrictedImageServer("./image"))
 	imageHandler := handlers.NewImageHandler(usecaseLogger, "http://localhost:8080", "./image")
 	mux.HandleFunc("/api/v1/image/upload", authMW(imageHandler.UploadImage))
-
 
 	var handler http.Handler = mux
 	handler = middleware.CorsMiddleware(handler, corsOrigin)
