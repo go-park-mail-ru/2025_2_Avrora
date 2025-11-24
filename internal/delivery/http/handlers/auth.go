@@ -24,7 +24,7 @@ func (h *authHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.authUsecase.Register(r.Context(), req.Email, req.Password); err != nil {
+	if err := h.authService.Register(r.Context(), req.Email, req.Password); err != nil {
 		switch {
 		case errors.Is(err, usecase.ErrUserAlreadyExists):
 			response.HandleError(w, err, http.StatusConflict, usecase.ErrUserAlreadyExists.Error())
@@ -56,7 +56,7 @@ func (h *authHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := h.authUsecase.Login(r.Context(), req.Email, req.Password)
+	token, err := h.authService.Login(r.Context(), req.Email, req.Password)
 	if err != nil {
 		switch {
 		case errors.Is(err, usecase.ErrInvalidCredentials):
@@ -76,7 +76,7 @@ func (h *authHandler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *authHandler) Logout(w http.ResponseWriter, r *http.Request) {
-	expiredToken, err := h.authUsecase.Logout(r.Context())
+	expiredToken, err := h.authService.Logout(r.Context())
 	if err != nil {
 		response.HandleError(w, err, http.StatusInternalServerError, "ошибка генерации jwt")
 	}

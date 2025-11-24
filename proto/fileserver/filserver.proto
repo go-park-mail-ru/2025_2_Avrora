@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+option go_package = "github.com/go-park-mail-ru/2025_2_Avrora/gen/proto/fileserver";
+
+package fileserver;
+
+service FileServer {
+  rpc Upload(UploadRequest) returns (UploadResponse);
+  rpc Get(GetRequest) returns (stream GetResponse); // ← streaming recommended for files
+}
+
+message UploadRequest {
+  bytes data = 1;
+  string filename = 2;      // e.g., "avatar.jpg" — you’ll generate this as UUID+ext
+  string content_type = 3;  // e.g., "image/jpeg"
+}
+
+message UploadResponse {
+  string url = 1;  // e.g., "/api/v1/image/abc123.jpg"
+}
+
+message GetRequest {
+  string filename = 1;  // use filename directly (since you control it, no need for ID)
+}
+
+// Stream for efficiency (avoids loading large files into memory at once)
+message GetResponse {
+  bytes chunk = 1;
+}
