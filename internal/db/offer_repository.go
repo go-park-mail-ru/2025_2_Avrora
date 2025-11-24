@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -707,4 +708,21 @@ func (r *OfferRepository) FilterOffers(ctx context.Context, f *domain.OfferFilte
 	}
 
 	return offers, nil
+}
+
+func (r *OfferRepository) GetOfferPriceHistory(ctx context.Context, id string) ([]domain.PricePoint, error) {
+	const query = `SELECT get_offer_price_history($1)::json`
+
+	var jsonData []byte
+	err := r.db.QueryRow(ctx, query, id).Scan(&jsonData)
+	if err != nil {
+		return nil, fmt.Errorf("call get_offer_price_history: %w", err)
+	}
+
+	var points []domain.PricePoint
+	if err := json.Unmarshal(jsonData, &points); err != nil {
+		return nil, fmt.Errorf("unmarshal price history: %w", err)
+	}
+
+	return points, nil
 }

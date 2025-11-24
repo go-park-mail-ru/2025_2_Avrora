@@ -1,5 +1,7 @@
+-- uuid
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- Generic updated_at trigger function (used by many tables)
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -8,13 +10,13 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Enums
+-- Enums (must come before tables that use them)
 CREATE TYPE offer_type_enum AS ENUM ('sale', 'rent');
 CREATE TYPE offer_status_enum AS ENUM ('active', 'sold', 'archived');
 CREATE TYPE user_role_enum AS ENUM ('user', 'owner', 'realtor');
 CREATE TYPE property_type_enum AS ENUM ('house', 'apartment');
 
--- users
+-- users (root dependency)
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     email TEXT NOT NULL UNIQUE
@@ -29,7 +31,7 @@ CREATE TRIGGER set_updated_at_users
     BEFORE UPDATE ON users
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- region
+-- region (hierarchical)
 CREATE TABLE region (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name TEXT NOT NULL CHECK (LENGTH(name) <= 255),
@@ -43,7 +45,7 @@ CREATE TRIGGER set_updated_at_region
     BEFORE UPDATE ON region
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- location
+-- location (depends on region)
 CREATE TABLE location (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     region_id UUID NOT NULL REFERENCES region(id) ON DELETE CASCADE,
@@ -100,8 +102,7 @@ CREATE TABLE profile (
     first_name TEXT CHECK (LENGTH(first_name) <= 100),
     last_name TEXT CHECK (LENGTH(last_name) <= 100),
     phone TEXT CHECK (LENGTH(phone) <= 20),
-    avatar_url TEXT
-        CHECK (LENGTH(avatar_url) <= 1024),
+    avatar_url TEXT CHECK (LENGTH(avatar_url) <= 1024),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -142,8 +143,7 @@ CREATE TRIGGER set_updated_at_offer
 CREATE TABLE offer_photo (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     offer_id UUID NOT NULL REFERENCES offer(id) ON DELETE CASCADE,
-    url TEXT NOT NULL
-        CHECK (LENGTH(url) <= 1024),
+    url TEXT NOT NULL CHECK (LENGTH(url) <= 1024),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -154,11 +154,106 @@ CREATE TRIGGER set_updated_at_offer_photo
 CREATE TABLE complex_photo (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     complex_id UUID NOT NULL REFERENCES housing_complex(id) ON DELETE CASCADE,
-    url TEXT NOT NULL
-        CHECK (LENGTH(url) <= 1024),
+    url TEXT NOT NULL CHECK (LENGTH(url) <= 1024),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE TRIGGER set_updated_at_complex_photo
     BEFORE UPDATE ON complex_photo
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ✅ CRITICAL: offer_price_history must come BEFORE functions/triggers that use it
+CREATE TABLE offer_price_history (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    offer_id UUID NOT NULL REFERENCES offer(id) ON DELETE CASCADE,
+    old_price BIGINT,
+    new_price BIGINT NOT NULL CHECK (new_price >= 0),
+    changed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    reason TEXT CHECK (LENGTH(reason) <= 500) DEFAULT NULL,
+    changed_by UUID REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE OR REPLACE FUNCTION get_offer_price_history(offer_uuid UUID)
+RETURNS JSON AS $$
+    SELECT COALESCE(
+        (
+            SELECT json_agg(
+                json_build_object('date', ts, 'price', price_val)
+                ORDER BY ts
+            )
+            FROM (
+                -- Initial price
+                SELECT o.created_at AS ts, o.price AS price_val
+                FROM offer o
+                WHERE o.id = offer_uuid
+
+                UNION ALL
+
+                -- Subsequent updates
+                SELECT h.changed_at AS ts, h.new_price AS price_val
+                FROM offer_price_history h
+                WHERE h.offer_id = offer_uuid
+            ) AS history
+        ),
+        '[]'::json
+    );
+$$ LANGUAGE sql STABLE;
+
+-- Trigger function for initial price (uses offer.created_at)
+CREATE OR REPLACE FUNCTION log_initial_offer_price()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO offer_price_history (
+        offer_id,
+        old_price,
+        new_price,
+        changed_at,
+        reason,
+        changed_by
+    ) VALUES (
+        NEW.id,
+        NULL,
+        NEW.price,
+        NEW.created_at,  -- ✅ consistent with offer creation time
+        'listed',
+        NEW.user_id
+    );
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger function for price updates (uses offer.updated_at for consistency)
+CREATE OR REPLACE FUNCTION log_offer_price_change()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF OLD.price IS DISTINCT FROM NEW.price THEN
+        INSERT INTO offer_price_history (
+            offer_id,
+            old_price,
+            new_price,
+            changed_at,
+            reason,
+            changed_by
+        ) VALUES (
+            NEW.id,
+            OLD.price,
+            NEW.price,
+            NEW.updated_at,  -- ✅ use updated_at (set by trigger) instead of NOW()
+            'price_updated',
+            NEW.user_id
+        );
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ✅ Triggers (now safe — table and functions exist)
+CREATE TRIGGER trigger_log_initial_offer_price
+    AFTER INSERT ON offer
+    FOR EACH ROW
+    EXECUTE FUNCTION log_initial_offer_price();
+
+CREATE TRIGGER trigger_log_offer_price_change
+    AFTER UPDATE OF price ON offer
+    FOR EACH ROW
+    EXECUTE FUNCTION log_offer_price_change();

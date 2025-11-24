@@ -114,6 +114,7 @@ func main() {
 	mux.HandleFunc("/api/v1/offers/", offerHandler.GetOffer)
 	mux.HandleFunc("/api/v1/offers/delete/", authMW(offerHandler.DeleteOffer))
 	mux.HandleFunc("/api/v1/offers/update/", authMW(offerHandler.UpdateOffer))
+	mux.HandleFunc("/api/v1/offers/pricehistory/", offerHandler.GetOfferPriceHistory)
 
 	// Profile
 	mux.HandleFunc("/api/v1/profile/", authMW(profileHandler.GetProfile))

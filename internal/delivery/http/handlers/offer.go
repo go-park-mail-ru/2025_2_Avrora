@@ -196,3 +196,18 @@ func (o *offerHandler) GetMyOffers(w http.ResponseWriter, r *http.Request) {
 	}
 	response.WriteJSON(w, http.StatusOK, offers)
 }
+
+func (o *offerHandler) GetOfferPriceHistory(w http.ResponseWriter, r *http.Request) {
+	id := GetPathParameter(r, "/api/v1/offers/pricehistory/")
+	if id == "" {
+		o.logger.Error(r.Context(), "invalid or no id")
+		response.HandleError(w, nil, http.StatusBadRequest, "нет id")
+		return
+	}
+	points, err := o.offerUsecase.GetOfferPriceHistory(r.Context(), id)
+	if err != nil {
+		response.HandleError(w, err, http.StatusInternalServerError, "ошибка получения предложений")
+		return
+	}
+	response.WriteJSON(w, http.StatusOK, points)
+}

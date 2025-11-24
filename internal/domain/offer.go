@@ -81,6 +81,11 @@ type OfferInFeed struct {
 	UpdatedAt    time.Time
 }
 
+type PricePoint struct {
+	Date  time.Time `json:"date"`
+	Price int64     `json:"price"`
+}
+
 type OffersInFeed struct {
 	Meta struct {
 		Total  int

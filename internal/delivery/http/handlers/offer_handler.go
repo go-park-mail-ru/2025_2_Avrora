@@ -19,6 +19,7 @@ type IOfferUsecase interface {
 	Delete(ctx context.Context, id string) error
 	ListOffersInFeedByUserID(ctx context.Context, userID string, page, limit int) (*domain.OffersInFeed, error)
 	FilterOffers(ctx context.Context, f *domain.OfferFilter, limit, offset int) ([]domain.OfferInFeed, error)
+	GetOfferPriceHistory(ctx context.Context, id string) ([]domain.PricePoint, error)
 }
 
 type offerHandler struct {

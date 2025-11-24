@@ -1,12 +1,39 @@
 .PHONY: test test-with-db lint
 
-DB_NAME := 2025_2_Avrora_test
+DB_NAME := 2025_2_Avrora
 DB_USER := postgres
 DB_PASS := postgres
 DB_PORT := 5432
-MIGRATIONS_DIR := ./infrastructure/db/migrations
 
-TEST_DB_URL := postgres://$(DB_USER):$(DB_PASS)@localhost:$(DB_PORT)/$(DB_NAME)?sslmode=disable
+DB_URL := postgres://$(DB_USER):$(DB_PASS)@localhost:$(DB_PORT)/$(DB_NAME)?sslmode=disable
+
+# Path to migrations directory
+MIGRATIONS_DIR := internal/db/migrations
+
+MIGRATE := migrate -database $(DB_URL) -path $(MIGRATIONS_DIR)
+
+.PHONY: migrate-up
+migrate-up:
+	@echo "🚀 Applying database migrations..."
+	@$(MIGRATE) up
+	@echo "✅ Migrations applied successfully."
+
+.PHONY: migrate-down
+migrate-down:
+	@echo "⏳ Rolling back last migration..."
+	@$(MIGRATE) down
+	@echo "✅ Last migration rolled back."
+
+.PHONY: migrate-force-clean
+migrate-force-clean:
+	@echo "⚠️ Forcing clean state (version 0) — use only in dev!"
+	@$(MIGRATE) force 0
+	@echo "✅ Database reset to version 0."
+
+.PHONY: migrate-status
+migrate-status:
+	@echo "📊 Migration status:"
+	@$(MIGRATE) version
 
 run:
 	@echo "🚀 Starting server..."
