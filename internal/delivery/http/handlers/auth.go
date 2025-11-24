@@ -14,7 +14,7 @@ func (h *authHandler) Register(w http.ResponseWriter, r *http.Request) {
 	var req RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		h.logger.Error(r.Context(), "invalid JSON", zap.Error(err))
-		response.HandleError(w, err, http.StatusBadRequest, "invalid JSON")
+		response.HandleError(w, err, http.StatusBadRequest, ErrInvalidJSON.Error())
 		return
 	}
 	
@@ -60,11 +60,11 @@ func (h *authHandler) Login(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, usecase.ErrInvalidCredentials):
-			response.HandleError(w, err, http.StatusUnauthorized, "invalid credentials")
+			response.HandleError(w, err, http.StatusUnauthorized, usecase.ErrInvalidCredentials.Error())
 		case errors.Is(err, usecase.ErrInvalidInput):
-			response.HandleError(w, err, http.StatusBadRequest, "invalid input")
+			response.HandleError(w, err, http.StatusBadRequest, usecase.ErrInvalidInput.Error())
 		default:
-			response.HandleError(w, err, http.StatusInternalServerError, "server side error")
+			response.HandleError(w, err, http.StatusInternalServerError, usecase.ErrServerSideError.Error())
 		}
 		return
 	}

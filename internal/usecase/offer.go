@@ -167,3 +167,50 @@ func (uc *offerUsecase) Delete(ctx context.Context, id string) error {
 	}
 	return uc.offerRepo.Delete(ctx, id)
 }
+
+// ToggleLike переключает лайк у объявления для пользователя
+func (uc *offerUsecase) ToggleLike(ctx context.Context, userID, offerID string) (bool, error) {
+	if userID == "" {
+		uc.log.Warn(ctx, "empty user ID in ToggleLike")
+		return false, domain.ErrInvalidInput
+	}
+	if offerID == "" {
+		uc.log.Warn(ctx, "empty offer ID in ToggleLike")
+		return false, domain.ErrInvalidInput
+	}
+
+	liked, err := uc.offerRepo.ToggleLike(ctx, userID, offerID)
+	if err != nil {
+		uc.log.Error(ctx, "failed to toggle like",
+			zap.String("user_id", userID),
+			zap.String("offer_id", offerID),
+			zap.Error(err))
+		return false, err
+	}
+
+	return liked, nil
+}
+
+// IsLiked проверяет, поставил ли пользователь лайк объявлению
+func (uc *offerUsecase) IsLiked(ctx context.Context, userID, offerID string) (bool, error) {
+	if userID == "" {
+		// Не ошибка — просто не лайкал (но логируем как debug/warn)
+		uc.log.Info(ctx, "empty user ID in IsLiked")
+		return false, nil
+	}
+	if offerID == "" {
+		uc.log.Warn(ctx, "empty offer ID in IsLiked")
+		return false, domain.ErrInvalidInput
+	}
+
+	liked, err := uc.offerRepo.IsLiked(ctx, userID, offerID)
+	if err != nil {
+		uc.log.Error(ctx, "failed to check like status",
+			zap.String("user_id", userID),
+			zap.String("offer_id", offerID),
+			zap.Error(err))
+		return false, err
+	}
+
+	return liked, nil
+}

@@ -9,6 +9,7 @@ require (
 	github.com/jackc/pgx/v5 v5.7.6
 	github.com/joho/godotenv v1.5.1
 	github.com/lib/pq v1.10.9
+	github.com/pkg/errors v0.9.1
 	go.uber.org/zap v1.27.0
 	golang.org/x/crypto v0.42.0
 )
