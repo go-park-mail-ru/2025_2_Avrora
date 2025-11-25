@@ -64,7 +64,7 @@ type OfferFilter struct {
 	Utug         *bool    `json:"utug"`
 	Address      *string  `json:"address"`
 	Liked        bool
-	LikesCount   int
+	LikesCount   int `json:"likes_count"`
 }
 
 // For feed (simplified + joined data)

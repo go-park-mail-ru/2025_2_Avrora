@@ -19,6 +19,7 @@ type IOfferRepository interface {
 	FilterOffers(ctx context.Context, f *domain.OfferFilter, limit, offset int) ([]domain.OfferInFeed, error)
 	ToggleLike(ctx context.Context, userID, offerID string) (bool, error)
 	IsLiked(ctx context.Context, userID, offerID string) (bool, error)
+	GetLikesCount(ctx context.Context, offerID string) (int, error)
 }
 
 type offerUsecase struct {

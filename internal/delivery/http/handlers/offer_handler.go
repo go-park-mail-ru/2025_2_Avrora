@@ -24,6 +24,7 @@ type IOfferUsecase interface {
 	FilterOffers(ctx context.Context, f *domain.OfferFilter, limit, offset int) ([]domain.OfferInFeed, error)
 	ToggleLike(ctx context.Context, userID, offerID string) (bool, error)
 	IsLiked(ctx context.Context, userID, offerID string) (bool, error)
+	GetLikesCount(ctx context.Context, offerID string) (int, error)
 }
 
 type offerHandler struct {
@@ -172,3 +173,5 @@ func (h *offerHandler) IsLiked(w http.ResponseWriter, r *http.Request) {
 
 	response.WriteJSON(w, http.StatusOK, map[string]bool{"liked": liked})
 }
+
+//тут должен быть эндпоинт для просмотров (делается)

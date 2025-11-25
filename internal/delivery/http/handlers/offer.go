@@ -196,3 +196,31 @@ func (o *offerHandler) GetMyOffers(w http.ResponseWriter, r *http.Request) {
 	}
 	response.WriteJSON(w, http.StatusOK, offers)
 }
+func (h *offerHandler) GetLikesCount(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		response.HandleError(w, nil, http.StatusMethodNotAllowed, "метод не поддерживается")
+		return
+	}
+
+	ctx := r.Context()
+	offerID := r.URL.Query().Get("id")
+	if offerID == "" {
+		response.HandleError(w, nil, http.StatusBadRequest, "параметр 'id' обязателен")
+		return
+	}
+
+	likesCount, err := h.offerUsecase.GetLikesCount(ctx, offerID)
+	if err != nil {
+		if errors.Is(err, domain.ErrOfferNotFound) {
+			response.HandleError(w, err, http.StatusNotFound, "объявление не найдено")
+			return
+		}
+		h.logger.Error(ctx, "failed to get likes count", zap.String("offer_id", offerID), zap.Error(err))
+		response.HandleError(w, err, http.StatusInternalServerError, "внутренняя ошибка сервера")
+		return
+	}
+
+	response.WriteJSON(w, http.StatusOK, map[string]int{
+		"likes_count": likesCount,
+	})
+}

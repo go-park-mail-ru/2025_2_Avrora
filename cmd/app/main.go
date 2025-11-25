@@ -77,7 +77,7 @@ func main() {
 	mux.HandleFunc("/api/v1/register", authHandler.Register)
 	mux.HandleFunc("/api/v1/login", authHandler.Login)
 	mux.HandleFunc("/api/v1/logout", authHandler.Logout)
-
+	mux.HandleFunc("/api/v1/offers/likes_count", offerHandler.GetLikesCount)
 	// ┌──────────────────┐
 	// │ Protected routes │
 	// └──────────────────┘

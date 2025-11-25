@@ -214,3 +214,18 @@ func (uc *offerUsecase) IsLiked(ctx context.Context, userID, offerID string) (bo
 
 	return liked, nil
 }
+
+// GetLikesCount вернет колво лайков .
+func (uc *offerUsecase) GetLikesCount(ctx context.Context, offerID string) (int, error) {
+	if offerID == "" {
+		uc.log.Warn(ctx, "empty offer ID in GetLikesCount")
+		return 0, domain.ErrInvalidInput
+	}
+
+	likesCount, err := uc.offerRepo.GetLikesCount(ctx, offerID)
+	if err != nil {
+		uc.log.Error(ctx, "failed to get likes count", zap.String("offer_id", offerID), zap.Error(err))
+		return 0, err
+	}
+	return likesCount, nil
+}

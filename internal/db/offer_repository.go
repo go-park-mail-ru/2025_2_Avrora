@@ -798,3 +798,15 @@ func (r *OfferRepository) IsLiked(ctx context.Context, userID, offerID string) (
 	).Scan(&liked)
 	return liked, err
 }
+func (r *OfferRepository) GetLikesCount(ctx context.Context, offerID string) (int, error) {
+	var likesCount int
+	err := r.db.QueryRow(ctx, "SELECT likes_count FROM offer WHERE id = $1", offerID).Scan(&likesCount)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return 0, domain.ErrOfferNotFound
+		}
+		r.log.Error(ctx, "failed to get likes count", zap.String("offer_id", offerID), zap.Error(err))
+		return 0, err
+	}
+	return likesCount, nil
+}
