@@ -49,7 +49,8 @@ const (
 		COALESCE(ARRAY_AGG(op.url) FILTER (WHERE op.url IS NOT NULL), '{}') AS image_urls,
 		o.created_at,
 		o.updated_at,
-		o.likes_count
+		o.likes_count,
+		o.views_count
 	FROM offer o
 	-- Join nearest metro station (same logic as listOffersQuery)
 	LEFT JOIN (
@@ -87,7 +88,8 @@ const (
 			ms.name,  -- ← don't forget to GROUP BY metro!
 			o.created_at,
 			o.updated_at,
-			o.likes_count
+			o.likes_count,
+			o.views_count
 	`
 
 	createOfferQuery = `
@@ -171,7 +173,8 @@ const (
 			op.url AS image_url,
 			o.created_at,
 			o.updated_at,
-			o.likes_count
+			o.likes_count,
+			o.views_count
 		FROM offer o
 		LEFT JOIN (
 			SELECT DISTINCT ON (location_id)
@@ -287,6 +290,7 @@ func scanOfferRow(scanner interface {
 		&offer.CreatedAt,
 		&offer.UpdatedAt,
 		&offer.LikesCount,
+		&offer.ViewsCount,
 	)
 	if err != nil {
 		return nil, err
@@ -809,4 +813,68 @@ func (r *OfferRepository) GetLikesCount(ctx context.Context, offerID string) (in
 		return 0, err
 	}
 	return likesCount, nil
+}
+
+// RecordView инкрементит просмотры, если в течении 24 часов пользователь посмотрел его
+func (r *OfferRepository) RecordView(ctx context.Context, userID, offerID string) error {
+	if userID == "" || offerID == "" {
+		return domain.ErrInvalidInput
+	}
+
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	var recentViewExists bool
+	err = tx.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM offer_view 
+			WHERE user_id = $1 AND offer_id = $2 AND viewed_at > NOW() - INTERVAL '24 hours'
+		)
+	`, userID, offerID).Scan(&recentViewExists)
+	if err != nil {
+		r.log.Error(ctx, "failed to check recent view", zap.String("user_id", userID), zap.String("offer_id", offerID), zap.Error(err))
+		return err
+	}
+
+	if recentViewExists {
+		// Нет нового просмотра — выходим без инкремента
+		return tx.Commit(ctx)
+	}
+
+	_, err = tx.Exec(ctx, `
+		INSERT INTO offer_view (user_id, offer_id, viewed_at)
+		VALUES ($1, $2, NOW())
+		ON CONFLICT (user_id, offer_id)
+		DO UPDATE SET viewed_at = NOW()
+	`, userID, offerID)
+	if err != nil {
+		r.log.Error(ctx, "failed to insert/update offer_view", zap.String("user_id", userID), zap.String("offer_id", offerID), zap.Error(err))
+		return err
+	}
+
+	// Шаг 3: инкремент views_count
+	_, err = tx.Exec(ctx, `
+		UPDATE offer SET views_count = views_count + 1 WHERE id = $1
+	`, offerID)
+	if err != nil {
+		r.log.Error(ctx, "failed to increment views_count", zap.String("offer_id", offerID), zap.Error(err))
+		return err
+	}
+
+	return tx.Commit(ctx)
+}
+func (r *OfferRepository) GetViewsCount(ctx context.Context, offerID string) (int, error) {
+	var viewsCount int
+	err := r.db.QueryRow(ctx, "SELECT views_count FROM offer WHERE id = $1", offerID).Scan(&viewsCount)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return 0, domain.ErrOfferNotFound
+		}
+		r.log.Error(ctx, "failed to get views count", zap.String("offer_id", offerID), zap.Error(err))
+		return 0, err
+	}
+	return viewsCount, nil
 }

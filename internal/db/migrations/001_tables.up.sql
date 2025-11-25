@@ -187,4 +187,10 @@ CREATE TRIGGER trigger_likes_count
     AFTER INSERT OR DELETE ON offer_like
     FOR EACH ROW EXECUTE FUNCTION update_likes_count();
 
-
+CREATE TABLE offer_view (
+  user_id     UUID      NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+   offer_id    UUID      NOT NULL REFERENCES offer(id) ON DELETE CASCADE,
+   viewed_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+     PRIMARY KEY (user_id, offer_id)
+);
+ALTER TABLE offer ADD COLUMN views_count INT NOT NULL DEFAULT 0;

@@ -50,6 +50,7 @@ type Offer struct {
 	UpdatedAt        time.Time
 	LikesCount       int  `json:"likes_count"`
 	IsLiked          bool `json:"is_liked"`
+	ViewsCount       int  `json:"views_count"`
 }
 
 type OfferFilter struct {
@@ -64,6 +65,7 @@ type OfferFilter struct {
 	Utug         *bool    `json:"utug"`
 	Address      *string  `json:"address"`
 	Liked        bool
+	ViewsCount   int `json:"views_count"`
 	LikesCount   int `json:"likes_count"`
 }
 

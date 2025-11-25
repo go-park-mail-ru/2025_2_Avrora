@@ -229,3 +229,26 @@ func (uc *offerUsecase) GetLikesCount(ctx context.Context, offerID string) (int,
 	}
 	return likesCount, nil
 }
+
+// RecordView регаем просмотр в течении 24 часов с одного аккаунтиа
+func (uc *offerUsecase) RecordView(ctx context.Context, userID, offerID string) error {
+	if offerID == "" {
+		return domain.ErrInvalidInput
+	}
+	if userID == "" {
+		uc.log.Info(ctx, "skipping view recording for anonymous user", zap.String("offer_id", offerID))
+		return nil
+	}
+	return uc.offerRepo.RecordView(ctx, userID, offerID)
+}
+
+// GetViewsCount возвращает количество просмотров объявления
+func (uc *offerUsecase) GetViewsCount(ctx context.Context, offerID string) (int, error) {
+	if offerID == "" {
+		uc.log.Warn(ctx, "empty offer ID in GetViewsCount")
+		return 0, domain.ErrInvalidInput
+	}
+
+	// Делегируем репозиторию (аналогично GetLikesCount)
+	return uc.offerRepo.GetViewsCount(ctx, offerID)
+}

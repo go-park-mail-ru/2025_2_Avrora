@@ -20,6 +20,8 @@ type IOfferRepository interface {
 	ToggleLike(ctx context.Context, userID, offerID string) (bool, error)
 	IsLiked(ctx context.Context, userID, offerID string) (bool, error)
 	GetLikesCount(ctx context.Context, offerID string) (int, error)
+	RecordView(ctx context.Context, userID, offerID string) error
+	GetViewsCount(ctx context.Context, offerID string) (int, error)
 }
 
 type offerUsecase struct {

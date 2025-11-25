@@ -86,6 +86,7 @@ func main() {
 	mux.HandleFunc("/api/v1/offers", offerHandler.GetOffers)
 	mux.HandleFunc("/api/v1/offers/create", authMW(offerHandler.CreateOffer))
 	mux.HandleFunc("/api/v1/offers/", offerHandler.GetOffer)
+	mux.HandleFunc("/api/v1/offers/views/", offerHandler.GetViewsCount) //Апдейт
 	mux.HandleFunc("/api/v1/offers/delete/", authMW(offerHandler.DeleteOffer))
 	mux.HandleFunc("/api/v1/offers/update/", authMW(offerHandler.UpdateOffer))
 

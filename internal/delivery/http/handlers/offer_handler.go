@@ -25,6 +25,8 @@ type IOfferUsecase interface {
 	ToggleLike(ctx context.Context, userID, offerID string) (bool, error)
 	IsLiked(ctx context.Context, userID, offerID string) (bool, error)
 	GetLikesCount(ctx context.Context, offerID string) (int, error)
+	RecordView(ctx context.Context, userID, offerID string) error
+	GetViewsCount(ctx context.Context, offerID string) (int, error)
 }
 
 type offerHandler struct {
@@ -174,4 +176,34 @@ func (h *offerHandler) IsLiked(w http.ResponseWriter, r *http.Request) {
 	response.WriteJSON(w, http.StatusOK, map[string]bool{"liked": liked})
 }
 
-//тут должен быть эндпоинт для просмотров (делается)
+// тут должен быть эндпоинт для просмотров (делается)
+func (h *offerHandler) GetViewsCount(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		response.HandleError(w, nil, http.StatusMethodNotAllowed, "метод не поддерживается")
+		return
+	}
+
+	ctx := r.Context()
+	offerID := r.URL.Query().Get("id")
+	if offerID == "" {
+		response.HandleError(w, nil, http.StatusBadRequest, "ID объявления обязателен")
+		return
+	}
+
+	viewsCount, err := h.offerUsecase.GetViewsCount(ctx, offerID)
+	if err != nil {
+		if errors.Is(err, domain.ErrOfferNotFound) {
+			response.HandleError(w, err, http.StatusNotFound, "объявление не найдено")
+			return
+		}
+		h.logger.Error(ctx, "failed to get views count",
+			zap.String("offer_id", offerID),
+			zap.Error(err))
+		response.HandleError(w, err, http.StatusInternalServerError, "внутренняя ошибка сервера")
+		return
+	}
+
+	response.WriteJSON(w, http.StatusOK, map[string]int{
+		"views_count": viewsCount,
+	})
+}
