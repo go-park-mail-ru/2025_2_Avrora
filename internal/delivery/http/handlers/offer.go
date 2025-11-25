@@ -16,7 +16,7 @@ func (o *offerHandler) GetOffers(w http.ResponseWriter, r *http.Request) {
 	page, err := parseIntQueryParam(r, "page", 1)
 	if err != nil {
 		o.logger.Error(r.Context(), "invalid or no page", zap.Error(err))
-		response.HandleError(w, err, http.StatusBadRequest, "no page")
+		response.HandleError(w, err, http.StatusBadRequest, "нет параметра page")
 		return
 	}
 	q := r.URL.Query()
@@ -44,7 +44,7 @@ func (o *offerHandler) GetOffers(w http.ResponseWriter, r *http.Request) {
 	limit, err := parseIntQueryParam(r, "limit", 10)
 	if err != nil {
 		o.logger.Error(r.Context(), "invalid or no limit", zap.Error(err))
-		response.HandleError(w, err, http.StatusBadRequest, "no limit")
+		response.HandleError(w, err, http.StatusBadRequest, "нет параметра limit")
 		return
 	}
 	result, err := o.offerUsecase.ListOffersInFeed(r.Context(), page, limit)
@@ -195,4 +195,19 @@ func (o *offerHandler) GetMyOffers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	response.WriteJSON(w, http.StatusOK, offers)
+}
+
+func (o *offerHandler) GetOfferPriceHistory(w http.ResponseWriter, r *http.Request) {
+	id := GetPathParameter(r, "/api/v1/offers/pricehistory/")
+	if id == "" {
+		o.logger.Error(r.Context(), "invalid or no id")
+		response.HandleError(w, nil, http.StatusBadRequest, "нет id")
+		return
+	}
+	points, err := o.offerUsecase.GetOfferPriceHistory(r.Context(), id)
+	if err != nil {
+		response.HandleError(w, err, http.StatusInternalServerError, "ошибка получения предложений")
+		return
+	}
+	response.WriteJSON(w, http.StatusOK, points)
 }

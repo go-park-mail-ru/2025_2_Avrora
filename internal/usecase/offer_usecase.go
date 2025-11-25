@@ -17,6 +17,7 @@ type IOfferRepository interface {
 	ListByUserID(ctx context.Context, userID string, page, limit int) (*domain.OffersInFeed, error)
 	GetByID(ctx context.Context, id string) (*domain.Offer, error)
 	FilterOffers(ctx context.Context, f *domain.OfferFilter, limit, offset int) ([]domain.OfferInFeed, error)
+	GetOfferPriceHistory(ctx context.Context, id string) ([]domain.PricePoint, error)
 }
 
 type offerUsecase struct {
@@ -38,4 +39,8 @@ func (uc *offerUsecase) FilterOffers(ctx context.Context, f *domain.OfferFilter,
 		return nil, err
 	}
 	return offers, nil
+}
+
+func (uc *offerUsecase) GetOfferPriceHistory(ctx context.Context, id string) ([]domain.PricePoint, error) {
+	return uc.offerRepo.GetOfferPriceHistory(ctx, id)
 }

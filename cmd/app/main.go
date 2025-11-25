@@ -5,6 +5,8 @@ import (
 	"os"
 
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/db"
+	service "github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/grpc"
+	fileserverpb "github.com/go-park-mail-ru/2025_2_Avrora/proto/fileserver"
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/handlers"
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/middleware"
 	request_id "github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/middleware/request"
@@ -13,6 +15,8 @@ import (
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/usecase"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 func main() {
@@ -29,6 +33,7 @@ func main() {
 	httpLogger := appLogger.With(zap.String("layer", "http"))
 	usecaseLogger := appLogger.With(zap.String("layer", "usecase"))
 	repoLogger := appLogger.With(zap.String("layer", "repository"))
+	grpcLogger := appLogger.With(zap.String("layer", "grpc"))
 
 	corsOrigin := os.Getenv("CORS_ORIGIN")
 	port := os.Getenv("SERVER_PORT")
@@ -47,19 +52,16 @@ func main() {
 	jwtService := utils.NewJwtGenerator(os.Getenv("JWT_SECRET"))
 
 	// Repositories
-	userRepo := db.NewUserRepository(dbConn.GetDB(), repoLogger)
 	offerRepo := db.NewOfferRepository(dbConn.GetDB(), repoLogger)
 	profileRepo := db.NewProfileRepository(dbConn.GetDB(), repoLogger)
 	complexRepo := db.NewHousingComplexRepository(dbConn.GetDB(), repoLogger)
 
 	// Usecases
-	authUC := usecase.NewAuthUsecase(userRepo, hasher, jwtService, usecaseLogger)
 	offerUC := usecase.NewOfferUsecase(offerRepo, usecaseLogger)
 	profileUC := usecase.NewProfileUsecase(profileRepo, hasher, usecaseLogger)
 	complexUC := usecase.NewHousingComplexUsecase(complexRepo, usecaseLogger)
 
 	// Handlers
-	authHandler := handlers.NewAuthHandler(authUC, httpLogger)
 	offerHandler := handlers.NewOfferHandler(offerUC, httpLogger)
 	profileHandler := handlers.NewProfileHandler(profileUC, httpLogger)
 	complexHandler := handlers.NewComplexHandler(complexUC, httpLogger)
@@ -69,7 +71,27 @@ func main() {
 		return middleware.AuthMiddleware(appLogger, jwtService)(h).ServeHTTP
 	}
 
+	// GRPC Clients
+	authClient, err := service.NewAuthClient(":50051", grpcLogger)
+	if err != nil {
+		log.Fatal("failed to create auth client", zap.Error(err))
+	}
+
+	// Create raw gRPC connection for fileserver
+	fileServerConn, err := grpc.NewClient(":50052", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatal("failed to create file server connection", zap.Error(err))
+	}
+
+	fileServerClient := fileserverpb.NewFileServerClient(fileServerConn)
+
 	mux := http.NewServeMux()
+
+	// Auth handler
+	authHandler := handlers.NewAuthHandler(authClient, httpLogger)
+
+	// Image handler with the proper gRPC client
+	imageHandler := handlers.NewImageHandler(fileServerClient, httpLogger, "http://localhost:8080")
 
 	// ┌───────────────┐
 	// │ Public routes │
@@ -82,34 +104,33 @@ func main() {
 	// │ Protected routes │
 	// └──────────────────┘
 
-	//Offers
-	mux.HandleFunc("/api/v1/offers", authMW(offerHandler.GetOffers))
+	// Image routes
+	mux.HandleFunc("/api/v1/image/upload", authMW(imageHandler.UploadImage))
+	mux.Handle("/api/v1/image/", imageHandler.ImageServer())
+
+	// Offers
+	mux.HandleFunc("/api/v1/offers", offerHandler.GetOffers)
 	mux.HandleFunc("/api/v1/offers/create", authMW(offerHandler.CreateOffer))
-	mux.HandleFunc("/api/v1/offers/", authMW(offerHandler.GetOffer))
+	mux.HandleFunc("/api/v1/offers/", offerHandler.GetOffer)
 	mux.HandleFunc("/api/v1/offers/delete/", authMW(offerHandler.DeleteOffer))
 	mux.HandleFunc("/api/v1/offers/update/", authMW(offerHandler.UpdateOffer))
+	mux.HandleFunc("/api/v1/offers/pricehistory/", offerHandler.GetOfferPriceHistory)
 
-	//Profile
+	// Profile
 	mux.HandleFunc("/api/v1/profile/", authMW(profileHandler.GetProfile))
 	mux.HandleFunc("/api/v1/profile/update/", authMW(profileHandler.UpdateProfile))
 	mux.HandleFunc("/api/v1/profile/security/", authMW(profileHandler.UpdateProfileSecurityByID))
 	mux.HandleFunc("/api/v1/profile/email/", authMW(profileHandler.UpdateEmail))
 	mux.HandleFunc("/api/v1/profile/myoffers/", authMW(offerHandler.GetMyOffers))
 
-	//Complex
-	mux.HandleFunc("/api/v1/complexes/list", authMW(complexHandler.ListComplexes))
+	// Complex
+	mux.HandleFunc("/api/v1/complexes/list", complexHandler.ListComplexes)
 	mux.HandleFunc("/api/v1/complexes/create", authMW(complexHandler.CreateComplex))
-	mux.HandleFunc("/api/v1/complexes/", authMW(complexHandler.GetComplexByID))
+	mux.HandleFunc("/api/v1/complexes/", complexHandler.GetComplexByID)
 	mux.HandleFunc("/api/v1/complexes/update/", authMW(complexHandler.UpdateComplex))
 	mux.HandleFunc("/api/v1/complexes/delete/", authMW(complexHandler.DeleteComplex))
 
-	// Protected image file server
-	imageFileServer := http.StripPrefix("/api/v1/image/", http.FileServer(http.Dir("image/")))
-	mux.Handle("/api/v1/image/", imageFileServer)
-	imageHandler := handlers.NewImageHandler(usecaseLogger, "http://localhost:8080", "./image")
-	mux.HandleFunc("/api/v1/image/upload", authMW(imageHandler.UploadImage))
-
-
+	// Middleware setup
 	var handler http.Handler = mux
 	handler = middleware.CorsMiddleware(handler, corsOrigin)
 	handler = request_id.RequestIDMiddleware(handler)

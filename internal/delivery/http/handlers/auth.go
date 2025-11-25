@@ -14,7 +14,7 @@ func (h *authHandler) Register(w http.ResponseWriter, r *http.Request) {
 	var req RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		h.logger.Error(r.Context(), "invalid JSON", zap.Error(err))
-		response.HandleError(w, err, http.StatusBadRequest, "invalid JSON")
+		response.HandleError(w, err, http.StatusBadRequest, ErrInvalidJSON.Error())
 		return
 	}
 	
@@ -24,7 +24,7 @@ func (h *authHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.authUsecase.Register(r.Context(), req.Email, req.Password); err != nil {
+	if err := h.authService.Register(r.Context(), req.Email, req.Password); err != nil {
 		switch {
 		case errors.Is(err, usecase.ErrUserAlreadyExists):
 			response.HandleError(w, err, http.StatusConflict, usecase.ErrUserAlreadyExists.Error())
@@ -56,15 +56,15 @@ func (h *authHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := h.authUsecase.Login(r.Context(), req.Email, req.Password)
+	token, err := h.authService.Login(r.Context(), req.Email, req.Password)
 	if err != nil {
 		switch {
 		case errors.Is(err, usecase.ErrInvalidCredentials):
-			response.HandleError(w, err, http.StatusUnauthorized, "invalid credentials")
+			response.HandleError(w, err, http.StatusUnauthorized, usecase.ErrInvalidCredentials.Error())
 		case errors.Is(err, usecase.ErrInvalidInput):
-			response.HandleError(w, err, http.StatusBadRequest, "invalid input")
+			response.HandleError(w, err, http.StatusBadRequest, usecase.ErrInvalidInput.Error())
 		default:
-			response.HandleError(w, err, http.StatusInternalServerError, "server side error")
+			response.HandleError(w, err, http.StatusInternalServerError, usecase.ErrServerSideError.Error())
 		}
 		return
 	}
@@ -76,7 +76,7 @@ func (h *authHandler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *authHandler) Logout(w http.ResponseWriter, r *http.Request) {
-	expiredToken, err := h.authUsecase.Logout(r.Context())
+	expiredToken, err := h.authService.Logout(r.Context())
 	if err != nil {
 		response.HandleError(w, err, http.StatusInternalServerError, "ошибка генерации jwt")
 	}

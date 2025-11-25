@@ -1,12 +1,72 @@
 .PHONY: test test-with-db lint
 
-DB_NAME := 2025_2_Avrora_test
+DB_NAME := 2025_2_Avrora
 DB_USER := postgres
 DB_PASS := postgres
 DB_PORT := 5432
-MIGRATIONS_DIR := ./infrastructure/db/migrations
 
-TEST_DB_URL := postgres://$(DB_USER):$(DB_PASS)@localhost:$(DB_PORT)/$(DB_NAME)?sslmode=disable
+DB_URL := postgres://$(DB_USER):$(DB_PASS)@localhost:$(DB_PORT)/$(DB_NAME)?sslmode=disable
+
+# Path to migrations directory
+MIGRATIONS_DIR := internal/db/migrations
+
+MIGRATE := migrate -database $(DB_URL) -path $(MIGRATIONS_DIR)
+
+.PHONY: migrate-up
+migrate-up:
+	@echo "🚀 Applying database migrations..."
+	@$(MIGRATE) up
+	@echo "✅ Migrations applied successfully."
+
+.PHONY: migrate-down
+migrate-down:
+	@echo "⏳ Rolling back last migration..."
+	@$(MIGRATE) down
+	@echo "✅ Last migration rolled back."
+
+.PHONY: migrate-force-clean
+migrate-force-clean:
+	@echo "⚠️ Forcing clean state (version 0) — use only in dev!"
+	@$(MIGRATE) force 0
+	@echo "✅ Database reset to version 0."
+
+.PHONY: migrate-status
+migrate-status:
+	@echo "📊 Migration status:"
+	@$(MIGRATE) version
+
+run:
+	@echo "🚀 Starting server..."
+	go run ./cmd/app/main.go &
+	go run ./cmd/auth/main.go &
+	go run ./cmd/fileserver/main.go &
+
+PORTS := 8080 50051 50052
+
+.PHONY: killports clean
+
+# Kill processes on specified ports
+killports:
+	@echo "🔍 Killing processes on ports: $(PORTS)"
+	@for port in $(PORTS); do \
+		echo "➡️  Checking port $$port..."; \
+		pids=$$(lsof -ti:$$port 2>/dev/null); \
+		if [ -n "$$pids" ]; then \
+			echo "   🚫 Killing PID(s): $$pids"; \
+			kill -9 $$pids; \
+		else \
+			echo "   ✅ No process found on port $$port"; \
+		fi; \
+	done
+	@echo "✅ Done."
+
+# Alias for convenience
+clean: killports
+
+build_proto:
+	@echo "🔧 Generating proto files..."
+	find ./proto -type f -name "*.proto" -exec protoc --go_out=. --go_opt=paths=source_relative \
+		--go-grpc_out=. --go-grpc_opt=paths=source_relative {} +
 
 lint:
 	@echo "🔍 Running golangci-lint..."
