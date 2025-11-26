@@ -115,6 +115,13 @@ func main() {
 	mux.HandleFunc("/api/v1/offers/delete/", authMW(offerHandler.DeleteOffer))
 	mux.HandleFunc("/api/v1/offers/update/", authMW(offerHandler.UpdateOffer))
 	mux.HandleFunc("/api/v1/offers/pricehistory/", offerHandler.GetOfferPriceHistory)
+	mux.HandleFunc("/api/v1/offers/viewcount/", offerHandler.GetViewCount)
+	mux.HandleFunc("/api/v1/offers/view/", offerHandler.ViewOffer)
+
+	// Like tracking endpoints
+	mux.HandleFunc("/api/v1/offers/like/", authMW(offerHandler.ToggleLike))
+	mux.HandleFunc("/api/v1/offers/likecount/", offerHandler.GetLikeCount)
+	mux.HandleFunc("/api/v1/offers/isliked/", authMW(offerHandler.IsOfferLiked))
 
 	// Profile
 	mux.HandleFunc("/api/v1/profile/", authMW(profileHandler.GetProfile))

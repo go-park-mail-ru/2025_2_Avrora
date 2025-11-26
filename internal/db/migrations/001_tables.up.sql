@@ -257,3 +257,70 @@ CREATE TRIGGER trigger_log_offer_price_change
     AFTER UPDATE OF price ON offer
     FOR EACH ROW
     EXECUTE FUNCTION log_offer_price_change();
+
+
+-- likes, views
+
+-- View tracking (one row per view event)
+CREATE TABLE offer_view (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    offer_id UUID NOT NULL REFERENCES offer(id) ON DELETE CASCADE,
+    viewed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Like tracking (one row per user per offer)
+CREATE TABLE offer_like (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    offer_id UUID NOT NULL REFERENCES offer(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    liked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (offer_id, user_id)  -- Prevent duplicate likes
+);
+
+-- Function to log a view (can be called from application)
+CREATE OR REPLACE FUNCTION log_offer_view(
+    offer_uuid UUID
+)
+RETURNS void AS $$
+BEGIN
+    INSERT INTO offer_view (offer_id)
+    VALUES (offer_uuid);
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to toggle like (add/remove)
+CREATE OR REPLACE FUNCTION toggle_offer_like(
+    offer_uuid UUID,
+    user_uuid UUID
+)
+RETURNS void AS $$
+BEGIN
+    -- Check if like exists
+    IF EXISTS (SELECT 1 FROM offer_like WHERE offer_id = offer_uuid AND user_id = user_uuid) THEN
+        -- Remove like
+        DELETE FROM offer_like WHERE offer_id = offer_uuid AND user_id = user_uuid;
+    ELSE
+        -- Add like
+        INSERT INTO offer_like (offer_id, user_id)
+        VALUES (offer_uuid, user_uuid);
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION get_offer_view_count(offer_uuid UUID)
+RETURNS BIGINT AS $$
+    SELECT COUNT(*) FROM offer_view WHERE offer_id = offer_uuid;
+$$ LANGUAGE sql STABLE;
+
+CREATE OR REPLACE FUNCTION get_offer_like_count(offer_uuid UUID)
+RETURNS BIGINT AS $$
+    SELECT COUNT(*) FROM offer_like WHERE offer_id = offer_uuid;
+$$ LANGUAGE sql STABLE;
+
+-- For getting user's like status
+CREATE OR REPLACE FUNCTION is_offer_liked(offer_uuid UUID, user_uuid UUID)
+RETURNS BOOLEAN AS $$
+    SELECT EXISTS (SELECT 1 FROM offer_like WHERE offer_id = offer_uuid AND user_id = user_uuid);
+$$ LANGUAGE sql STABLE;
