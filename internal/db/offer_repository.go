@@ -726,3 +726,78 @@ func (r *OfferRepository) GetOfferPriceHistory(ctx context.Context, id string) (
 
 	return points, nil
 }
+
+// Log a view event for an offer
+func (r *OfferRepository) LogView(ctx context.Context, offerID string) error {
+	const query = `SELECT log_offer_view($1)`
+	
+	_, err := r.db.Exec(ctx, query, offerID)
+	if err != nil {
+		r.log.Error(ctx, "failed to log offer view", 
+			zap.String("offer_id", offerID), 
+			zap.Error(err))
+		return fmt.Errorf("log offer view: %w", err)
+	}
+	return nil
+}
+
+// Toggle like status for an offer
+func (r *OfferRepository) ToggleLike(ctx context.Context, offerID, userID string) error {
+	const query = `SELECT toggle_offer_like($1, $2)`
+	
+	_, err := r.db.Exec(ctx, query, offerID, userID)
+	if err != nil {
+		r.log.Error(ctx, "failed to toggle offer like", 
+			zap.String("offer_id", offerID), 
+			zap.String("user_id", userID),
+			zap.Error(err))
+		return fmt.Errorf("toggle offer like: %w", err)
+	}
+	return nil
+}
+
+// Get total view count for an offer
+func (r *OfferRepository) GetOfferViewCount(ctx context.Context, id string) (int, error) {
+	const query = `SELECT get_offer_view_count($1)`
+	
+	var count int
+	err := r.db.QueryRow(ctx, query, id).Scan(&count)
+	if err != nil {
+		r.log.Error(ctx, "failed to get offer view count", 
+			zap.String("offer_id", id), 
+			zap.Error(err))
+		return 0, fmt.Errorf("get offer view count: %w", err)
+	}
+	return count, nil
+}
+
+// Get total like count for an offer
+func (r *OfferRepository) GetOfferLikeCount(ctx context.Context, id string) (int, error) {
+	const query = `SELECT get_offer_like_count($1)`
+	
+	var count int
+	err := r.db.QueryRow(ctx, query, id).Scan(&count)
+	if err != nil {
+		r.log.Error(ctx, "failed to get offer like count", 
+			zap.String("offer_id", id), 
+			zap.Error(err))
+		return 0, fmt.Errorf("get offer like count: %w", err)
+	}
+	return count, nil
+}
+
+// Check if user has liked an offer
+func (r *OfferRepository) IsOfferLiked(ctx context.Context, offerID, userID string) (bool, error) {
+	const query = `SELECT is_offer_liked($1, $2)`
+	
+	var liked bool
+	err := r.db.QueryRow(ctx, query, offerID, userID).Scan(&liked)
+	if err != nil {
+		r.log.Error(ctx, "failed to check if offer is liked", 
+			zap.String("offer_id", offerID), 
+			zap.String("user_id", userID),
+			zap.Error(err))
+		return false, fmt.Errorf("check offer like status: %w", err)
+	}
+	return liked, nil
+}
