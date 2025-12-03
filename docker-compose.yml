@@ -1,54 +1,100 @@
-version: '3.8'
-
 services:
-  postgres:
-    image: postgres:18-alpine
+  db:
+    image: postgres:16-alpine
     environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: 2025_2_Avrora
+    volumes:
+      - pg:/var/lib/postgresql/data
     ports:
       - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 5s
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
       timeout: 5s
       retries: 5
 
-  postgres_test:
-    image: postgres:latest
-    environment:
-      POSTGRES_DB: ${POSTGRES_TEST_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  migrate:
+    build: { context: ., target: migrate }
+    command: ["/go/bin/migrate", "-database", "postgres://postgres:postgres@db:5432/2025_2_Avrora?sslmode=disable", "-path", "/app/migrations", "up"]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  seed:
+    image: postgres:16-alpine
+    volumes: [ "./internal/db/seed/mocks.sql:/seed.sql:ro" ]
+    environment: { PGPASSWORD: postgres }
+    command: >
+      sh -c "
+        until pg_isready -h db -U postgres; do sleep 1; done;
+        psql -h db -U postgres -d 2025_2_Avrora -f /seed.sql;
+      "
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
+
+  auth-service:
+    build:
+      context: .
+      target: auth-service
     ports:
-      - "5433:5432"
-    volumes:
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_TEST_DB}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      - "50051:50051"
+    env_file: .env
+    depends_on:
+      seed:
+        condition: service_completed_successfully
+    restart: unless-stopped
 
-  app:
-    build: .
+  fileserver-service:
+    build:
+      context: .
+      target: fileserver-service
+    ports:
+      - "50052:50052"
+    env_file: .env
+    depends_on:
+      seed:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  avrora-app:
+    build:
+      context: .
+      target: avrora-app 
     ports:
       - "8080:8080"
-    environment:
-      DB_HOST: ${DB_HOST}
-      DB_PORT: ${DB_PORT}
-      DB_NAME: ${DB_NAME}
-      DB_USER: ${DB_USER}
-      DB_PASSWORD: ${DB_PASSWORD}
-      JWT_SECRET: ${JWT_SECRET}
-      PASSWORD_PEPPER: ${PASSWORD_PEPPER}
-      CORS_ORIGIN: ${CORS_ORIGIN}
+    env_file: .env
     depends_on:
-      - postgres
+      auth-service:
+        condition: service_started
+      fileserver-service:
+        condition: service_started
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana-oss:11.3.0
+    ports:
+      - "8888:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    restart: unless-stopped
 
 volumes:
-  postgres_data:
+  pg:
+  grafana_data:

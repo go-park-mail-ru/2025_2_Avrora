@@ -1,23 +1,33 @@
 package main
 
 import (
+	"log"
 	"net/http"
 	"os"
 
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/db"
 	service "github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/grpc"
-	fileserverpb "github.com/go-park-mail-ru/2025_2_Avrora/proto/fileserver"
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/handlers"
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/middleware"
 	request_id "github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/middleware/request"
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/utils"
 	logger "github.com/go-park-mail-ru/2025_2_Avrora/internal/log"
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/usecase"
+	fileserverpb "github.com/go-park-mail-ru/2025_2_Avrora/proto/fileserver"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
+
+func startMetricsServer() {
+	http.Handle("/metrics", middleware.PrometheusHandler())
+	go func() {
+		if err := http.ListenAndServe(":8081", nil); err != nil {
+			log.Fatal("failed to start metrics server", zap.Error(err))
+		}
+	}()
+}
 
 func main() {
 	utils.LoadEnv()
@@ -72,13 +82,13 @@ func main() {
 	}
 
 	// GRPC Clients
-	authClient, err := service.NewAuthClient(":50051", grpcLogger)
+	authClient, err := service.NewAuthClient("auth-service:50051", grpcLogger)
 	if err != nil {
 		log.Fatal("failed to create auth client", zap.Error(err))
 	}
 
 	// Create raw gRPC connection for fileserver
-	fileServerConn, err := grpc.NewClient(":50052", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	fileServerConn, err := grpc.NewClient("fileserver-service:50052", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatal("failed to create file server connection", zap.Error(err))
 	}
@@ -139,9 +149,13 @@ func main() {
 
 	// Middleware setup
 	var handler http.Handler = mux
+	handler = middleware.PrometheusMiddleware(handler) // Add Prometheus metrics middleware
 	handler = middleware.CorsMiddleware(handler, corsOrigin)
 	handler = request_id.RequestIDMiddleware(handler)
 	handler = middleware.LoggerMiddleware(appLogger)(handler)
+
+	// Start metrics server
+	startMetricsServer()
 
 	appLogger.Logger.Info("starting server", zap.String("port", port))
 	appLogger.Logger.Fatal("server stopped", zap.Error(http.ListenAndServe(":"+port, handler)))

@@ -151,3 +151,4 @@ INSERT INTO offer_photo (offer_id, url) VALUES
   ('60000000-0000-0000-0000-000000000005', 'https://homa-land.ru/api/v1/image/default_offer4.jpg'),
   ('60000000-0000-0000-0000-000000000005', 'https://homa-land.ru/api/v1/image/default_offer5.jpg'),
   ('60000000-0000-0000-0000-000000000006', 'https://homa-land.ru/api/v1/image/default_offer6.jpg');
+

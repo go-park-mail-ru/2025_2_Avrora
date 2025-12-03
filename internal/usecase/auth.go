@@ -47,7 +47,7 @@ func (uc *authUsecase) Login(ctx context.Context, email, password string) (strin
 			uc.log.Error(ctx, "user not found", zap.String("email", email))
 			return "", ErrInvalidCredentials
 		}
-		return "", err
+		return "", ErrInvalidCredentials
 	}
 
 	if !uc.passwordHasher.Compare(user.PasswordHash, password) {

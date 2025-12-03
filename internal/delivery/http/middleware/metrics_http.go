@@ -7,6 +7,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var (
@@ -80,4 +81,8 @@ func PrometheusMiddleware(next http.Handler) http.Handler {
 			httpErrorsTotal.WithLabelValues(method, path, status).Inc()
 		}
 	})
+}
+
+func PrometheusHandler() http.Handler {
+    return promhttp.Handler()
 }
