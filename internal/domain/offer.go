@@ -77,6 +77,9 @@ type OfferInFeed struct {
 	Address      string
 	Metro        string
 	ImageURL     string
+	ViewCount    int
+	LikeCount    int
+	IsLiked      bool
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }

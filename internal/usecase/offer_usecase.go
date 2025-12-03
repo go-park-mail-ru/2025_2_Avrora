@@ -18,6 +18,11 @@ type IOfferRepository interface {
 	GetByID(ctx context.Context, id string) (*domain.Offer, error)
 	FilterOffers(ctx context.Context, f *domain.OfferFilter, limit, offset int) ([]domain.OfferInFeed, error)
 	GetOfferPriceHistory(ctx context.Context, id string) ([]domain.PricePoint, error)
+	LogView(ctx context.Context, offerID string) error
+	ToggleLike(ctx context.Context, offerID, userID string) error
+	GetOfferViewCount(ctx context.Context, id string) (int, error)
+	GetOfferLikeCount(ctx context.Context, id string) (int, error)
+	IsOfferLiked(ctx context.Context, offerID, userID string) (bool, error)
 }
 
 type offerUsecase struct {

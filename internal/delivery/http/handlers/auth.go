@@ -64,7 +64,7 @@ func (h *authHandler) Login(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, usecase.ErrInvalidInput):
 			response.HandleError(w, err, http.StatusBadRequest, usecase.ErrInvalidInput.Error())
 		default:
-			response.HandleError(w, err, http.StatusInternalServerError, usecase.ErrServerSideError.Error())
+			response.HandleError(w, err, http.StatusBadRequest, usecase.ErrInvalidInput.Error())
 		}
 		return
 	}

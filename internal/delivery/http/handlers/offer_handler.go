@@ -20,6 +20,11 @@ type IOfferUsecase interface {
 	ListOffersInFeedByUserID(ctx context.Context, userID string, page, limit int) (*domain.OffersInFeed, error)
 	FilterOffers(ctx context.Context, f *domain.OfferFilter, limit, offset int) ([]domain.OfferInFeed, error)
 	GetOfferPriceHistory(ctx context.Context, id string) ([]domain.PricePoint, error)
+	ViewOffer(ctx context.Context, offerID string) error
+	ToggleOfferLike(ctx context.Context, offerID, userID string) error
+	GetOfferViewCount(ctx context.Context, offerID string) (int, error)
+	GetOfferLikeCount(ctx context.Context, offerID string) (int, error)
+	IsOfferLiked(ctx context.Context, offerID, userID string) (bool, error)
 }
 
 type offerHandler struct {

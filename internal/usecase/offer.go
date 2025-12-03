@@ -167,3 +167,59 @@ func (uc *offerUsecase) Delete(ctx context.Context, id string) error {
 	}
 	return uc.offerRepo.Delete(ctx, id)
 }
+
+// ViewOffer records a view event for an offer (can be anonymous)
+func (uc *offerUsecase) ViewOffer(ctx context.Context, offerID string) error {
+	if offerID == "" {
+		uc.log.Warn(ctx, "empty offer ID for view")
+		return domain.ErrInvalidInput
+	}
+
+	return uc.offerRepo.LogView(ctx, offerID)
+}
+
+// ToggleOfferLike toggles like status for an authenticated user
+func (uc *offerUsecase) ToggleOfferLike(ctx context.Context, offerID, userID string) error {
+	if offerID == "" || userID == "" {
+		uc.log.Warn(ctx, "missing offer or user ID for like toggle",
+			zap.String("offer_id", offerID),
+			zap.String("user_id", userID))
+		return domain.ErrInvalidInput
+	}
+	
+	return uc.offerRepo.ToggleLike(ctx, offerID, userID)
+}
+
+// GetOfferViewCount retrieves total views for an offer
+func (uc *offerUsecase) GetOfferViewCount(ctx context.Context, offerID string) (int, error) {
+	if offerID == "" {
+		uc.log.Warn(ctx, "empty offer ID for view count")
+		return 0, domain.ErrInvalidInput
+	}
+	
+	return uc.offerRepo.GetOfferViewCount(ctx, offerID)
+}
+
+// GetOfferLikeCount retrieves total likes for an offer
+func (uc *offerUsecase) GetOfferLikeCount(ctx context.Context, offerID string) (int, error) {
+	if offerID == "" {
+		uc.log.Warn(ctx, "empty offer ID for like count")
+		return 0, domain.ErrInvalidInput
+	}
+	
+	return uc.offerRepo.GetOfferLikeCount(ctx, offerID)
+}
+
+// IsOfferLiked checks if current user has liked an offer
+func (uc *offerUsecase) IsOfferLiked(ctx context.Context, offerID, userID string) (bool, error) {
+	if offerID == "" || userID == "" {
+		uc.log.Warn(ctx, "missing offer or user ID for like check",
+			zap.String("offer_id", offerID),
+			zap.String("user_id", userID))
+		
+		// Return false for invalid inputs (safe default)
+		return false, nil
+	}
+	
+	return uc.offerRepo.IsOfferLiked(ctx, offerID, userID)
+}

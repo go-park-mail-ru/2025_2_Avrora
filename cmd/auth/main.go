@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"log"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -10,17 +12,29 @@ import (
 
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/db"
 	service "github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/grpc"
+	"github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/middleware"
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/utils"
 	logger "github.com/go-park-mail-ru/2025_2_Avrora/internal/log"
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/usecase"
-	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
+
+func startMetricsServer() {
+	http.Handle("/metrics", promhttp.Handler())
+	go func() {
+		if err := http.ListenAndServe(":8082", nil); err != nil {
+			log.Fatal("failed to start metrics server", zap.Error(err))
+		}
+	}()
+}
 
 func main() {
 	utils.LoadEnv()
 
+	// Setup logger
 	log, err := zap.NewProduction()
 	if err != nil {
 		panic("failed to create logger")
@@ -39,7 +53,7 @@ func main() {
 		log.Fatal("failed to connect to database", zap.Error(err))
 	}
 	defer dbConn.Close() // Ensure database connection is closed on shutdown
-	
+
 	// Services
 	hasher, err := utils.NewPasswordHasher(os.Getenv("PASSWORD_PEPPER"))
 	if err != nil {
@@ -49,13 +63,22 @@ func main() {
 	authRepo := db.NewUserRepository(dbConn.GetDB(), repoLogger)
 	authUC := usecase.NewAuthUsecase(authRepo, hasher, jwtService, usecaseLogger)
 
-	grpcServer := grpc.NewServer()
+	// Create gRPC server with the metrics interceptor
+	grpcServer := grpc.NewServer(
+		grpc.UnaryInterceptor(middleware.GRPCMetricsInterceptor), // Add the metrics interceptor
+	)
+
+	// Register the Auth service
 	service.RegisterAuthServer(grpcServer, authUC, grpcLogger)
 
+	// Start listening
 	lis, err := net.Listen("tcp", ":50051")
 	if err != nil {
 		log.Fatal("failed to listen for gRPC", zap.Error(err))
 	}
+
+	// Expose metrics endpoint
+	startMetricsServer()
 
 	// Graceful shutdown setup
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
