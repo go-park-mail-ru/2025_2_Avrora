@@ -61,7 +61,7 @@ func TestComparePassword(t *testing.T) {
 		t.Fatalf("ошибка при хешировании: %v", err)
 	}
 
-	if !ph.Compare(password, hash) {
+	if !ph.Compare(hash, password) {
 		t.Fatal("ожидалось, что пароль совпадает с хешем")
 	}
 
