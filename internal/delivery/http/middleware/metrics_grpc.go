@@ -82,7 +82,7 @@ func extractServiceName(fullMethod string) string {
 func extractMethodName(fullMethod string) string {
 	parts := strings.Split(fullMethod, "/")
 	if len(parts) >= 4 {
-		return parts[3] // Method name is the fourth part
+		return parts[3]
 	}
 	return "unknown_method"
 }

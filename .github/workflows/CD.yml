@@ -1,0 +1,65 @@
+name: CD
+
+on:
+  push:
+    branches:
+      - main 
+      - docker
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: Build and push auth-service
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./auth-service.Dockerfile
+          push: true
+          tags: yourusername/avrora-auth-service:latest
+
+      - name: Build and push fileserver-service
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./fileserver-service.Dockerfile
+          push: true
+          tags: yourusername/avrora-fileserver-service:latest
+
+      - name: Build and push avrora-app
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./avrora-app.Dockerfile
+          push: true
+          tags: yourusername/avrora-avrora-app:latest
+
+  deploy-to-vm:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to VM
+        uses: appleboy/ssh-action@master
+        with:
+          host: 37.139.40.252
+          username: ubuntu
+          key: ${{ secrets.VM_SSH_KEY }}
+          script: |
+            cd /home/ubuntu/avrora/back/2025_2_Avrora
+            git pull origin docker # For now xD
+            docker compose pull
+            docker compose up -d

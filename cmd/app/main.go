@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/db"
 	service "github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/grpc"
@@ -26,7 +28,8 @@ func startMetricsServer() {
 		if err := http.ListenAndServe(":8081", nil); err != nil {
 			log.Fatal("failed to start metrics server", zap.Error(err))
 		}
-	}()
+		log.Println(context.Background(), "Metrics server started on port 8081", zap.String("port", "8081"))
+	}()	
 }
 
 func main() {
@@ -156,6 +159,7 @@ func main() {
 
 	// Start metrics server
 	startMetricsServer()
+	time.Sleep(500*time.Millisecond)
 
 	appLogger.Logger.Info("starting server", zap.String("port", port))
 	appLogger.Logger.Fatal("server stopped", zap.Error(http.ListenAndServe(":"+port, handler)))

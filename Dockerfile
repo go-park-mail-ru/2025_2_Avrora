@@ -70,4 +70,4 @@ CMD ["./auth-service"]
 FROM base AS fileserver-service
 COPY --from=builder /app/fileserver-service .
 EXPOSE 50052
-CMD ["./fileserver-service"]
+CMD ["./fileserver-service"] 
