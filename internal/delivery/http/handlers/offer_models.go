@@ -86,3 +86,80 @@ type UpdateOfferRequest struct {
 	RentalPeriod     string   `json:"rental_period"`
 	ImageURLs        []string `json:"image_urls"`
 }
+
+// WebhookRequest represents the root structure of the incoming webhook payload.
+type WebhookRequest struct {
+	Event string      `json:"event"`
+	Type  string      `json:"type"`
+	Object Payment    `json:"object"`
+}
+
+// Payment represents the payment details in the webhook payload.
+type Payment struct {
+	Amount             AmountDetails       `json:"amount"`
+	AuthorizationDetails AuthorizationDetails `json:"authorization_details"`
+	CreatedAt          string              `json:"created_at"`
+	Description        string              `json:"description"`
+	ExpiresAt          string              `json:"expires_at"`
+	ID                 string              `json:"id"`
+	Metadata           map[string]string   `json:"metadata"`
+	Paid               bool                `json:"paid"`
+	PaymentMethod      PaymentMethod       `json:"payment_method"`
+	Recipient          Recipient           `json:"recipient"`
+	Refundable         bool                `json:"refundable"`
+	Status             string              `json:"status"`
+	Test               bool                `json:"test"`
+}
+
+// AmountDetails represents the amount details in the payment.
+type AmountDetails struct {
+	Currency string `json:"currency"`
+	Value    string `json:"value"`
+}
+
+// AuthorizationDetails represents the authorization details in the payment.
+type AuthorizationDetails struct {
+	AuthCode      string            `json:"auth_code"`
+	RRN           string            `json:"rrn"`
+	ThreeDSecure ThreeDSecureDetails `json:"three_d_secure"`
+}
+
+// ThreeDSecureDetails represents the 3D Secure details.
+type ThreeDSecureDetails struct {
+	Applied           bool   `json:"applied"`
+	ChallengeCompleted bool   `json:"challenge_completed"`
+	MethodCompleted   bool   `json:"method_completed"`
+	Protocol          string `json:"protocol"`
+}
+
+// PaymentMethod represents the payment method details.
+type PaymentMethod struct {
+	Card   CardDetails `json:"card"`
+	ID     string      `json:"id"`
+	Saved  bool        `json:"saved"`
+	Status string      `json:"status"`
+	Title  string      `json:"title"`
+	Type   string      `json:"type"`
+}
+
+// CardDetails represents the card details in the payment method.
+type CardDetails struct {
+	CardProduct   CardProductDetails `json:"card_product"`
+	CardType      string            `json:"card_type"`
+	ExpiryMonth   string            `json:"expiry_month"`
+	ExpiryYear    string            `json:"expiry_year"`
+	First6        string            `json:"first6"`
+	IssuerCountry string            `json:"issuer_country"`
+	Last4         string            `json:"last4"`
+}
+
+// CardProductDetails represents the card product details.
+type CardProductDetails struct {
+	Code string `json:"code"`
+}
+
+// Recipient represents the recipient details in the payment.
+type Recipient struct {
+	AccountID string `json:"account_id"`
+	GatewayID string `json:"gateway_id"`
+}

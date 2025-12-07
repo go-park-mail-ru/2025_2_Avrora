@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/middleware"
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/response"
@@ -335,4 +336,44 @@ func (o *offerHandler) IsOfferLiked(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	response.WriteJSON(w, http.StatusOK, map[string]bool{"is_liked": isLiked})
+}
+
+func (o *offerHandler) WebHook(w http.ResponseWriter, r *http.Request) {
+	o.logger.Info(r.Context(), "webhook request received")
+	if r.Method != http.MethodPost {
+		http.Error(w, "Метод не поддерживается", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var body WebhookRequest
+	err := json.NewDecoder(r.Body).Decode(&body)
+	if err != nil {
+		http.Error(w, "Ошибка при чтении данных", http.StatusBadRequest)
+		return
+	}
+
+	offer_id := body.Object.Metadata["offer_id"]
+	_, err = o.offerUsecase.Get(r.Context(), offer_id)
+	if err != nil {
+		o.logger.Error(r.Context(), "ошибка получения предложения")
+		response.HandleError(w, err, http.StatusInternalServerError, "ошибка получения предложения")
+		return
+	}
+
+	err = o.offerUsecase.InsertPaidAdvertisement(r.Context(), offer_id, time.Now().Add(7 * time.Hour * 24))
+	if err != nil {
+		response.HandleError(w, err, http.StatusInternalServerError, "ошибка регистрации оплаты")
+		return
+	}
+
+	response.WriteJSON(w, http.StatusOK, "успешно регистрация оплаты")
+}
+
+func (o *offerHandler) GetPaidOffers(w http.ResponseWriter, r *http.Request) {
+	offers, err := o.offerUsecase.ListPaidOffers(r.Context(), 1, 10); if err != nil {
+		response.HandleError(w, err, http.StatusInternalServerError, "ошибка получения оплаченных предложений")
+		return
+	}
+
+	response.WriteJSON(w, http.StatusOK, offers)
 }

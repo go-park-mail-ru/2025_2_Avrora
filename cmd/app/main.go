@@ -130,6 +130,7 @@ func main() {
 	mux.HandleFunc("/api/v1/offers/pricehistory/", offerHandler.GetOfferPriceHistory)
 	mux.HandleFunc("/api/v1/offers/viewcount/", offerHandler.GetViewCount)
 	mux.HandleFunc("/api/v1/offers/view/", offerHandler.ViewOffer)
+	mux.HandleFunc("/api/v1/offers/paid_offers", offerHandler.GetPaidOffers)
 
 	// Like tracking endpoints
 	mux.HandleFunc("/api/v1/offers/like/", authMW(offerHandler.ToggleLike))
@@ -149,6 +150,9 @@ func main() {
 	mux.HandleFunc("/api/v1/complexes/", complexHandler.GetComplexByID)
 	mux.HandleFunc("/api/v1/complexes/update/", authMW(complexHandler.UpdateComplex))
 	mux.HandleFunc("/api/v1/complexes/delete/", authMW(complexHandler.DeleteComplex))
+
+	// Webhook for payments
+	mux.HandleFunc("/api/v1/offers/webhook", offerHandler.WebHook)
 
 	// Middleware setup
 	var handler http.Handler = mux

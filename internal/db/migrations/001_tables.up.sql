@@ -324,3 +324,27 @@ CREATE OR REPLACE FUNCTION is_offer_liked(offer_uuid UUID, user_uuid UUID)
 RETURNS BOOLEAN AS $$
     SELECT EXISTS (SELECT 1 FROM offer_like WHERE offer_id = offer_uuid AND user_id = user_uuid);
 $$ LANGUAGE sql STABLE;
+
+
+-- Advertisements
+
+CREATE TABLE paid_advertisement (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    offer_id UUID NOT NULL REFERENCES offer(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMPTZ NOT NULL,
+    UNIQUE (offer_id)
+);
+
+CREATE OR REPLACE FUNCTION insert_paid_advertisement(
+    p_offer_id UUID,
+    p_expires_at TIMESTAMPTZ
+)
+RETURNS void AS $$
+BEGIN
+    INSERT INTO paid_advertisement (offer_id, expires_at)
+    VALUES (p_offer_id, p_expires_at)
+    ON CONFLICT (offer_id) DO NOTHING; -- Avoid duplicates
+END;
+$$ LANGUAGE plpgsql;

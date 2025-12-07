@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/domain"
 	"github.com/google/uuid"
@@ -222,4 +223,53 @@ func (uc *offerUsecase) IsOfferLiked(ctx context.Context, offerID, userID string
 	}
 	
 	return uc.offerRepo.IsOfferLiked(ctx, offerID, userID)
+}
+
+// InsertPaidAdvertisement inserts a new paid advertisement.
+func (uc *offerUsecase) InsertPaidAdvertisement(ctx context.Context, offerID string, expiresAt time.Time) error {
+	// Validate inputs
+	if offerID == "" {
+		uc.log.Warn(ctx, "empty offer ID for paid advertisement")
+		return domain.ErrInvalidInput
+	}
+	if expiresAt.Before(time.Now()) {
+		uc.log.Warn(ctx, "invalid expiration time for paid advertisement",
+			zap.Time("expires_at", expiresAt))
+		return domain.ErrInvalidInput
+	}
+
+	// Delegate to repository
+	err := uc.offerRepo.InsertPaidAdvertisement(ctx, offerID, expiresAt)
+	if err != nil {
+		uc.log.Error(ctx, "failed to insert paid advertisement",
+			zap.String("offer_id", offerID),
+			zap.Time("expires_at", expiresAt),
+			zap.Error(err))
+		return fmt.Errorf("insert paid advertisement: %w", err)
+	}
+
+	return nil
+}
+
+// ListPaidOffers retrieves paginated paid offers in the OffersInFeed format.
+func (uc *offerUsecase) ListPaidOffers(ctx context.Context, page, limit int) (*domain.OffersInFeed, error) {
+	// Validate inputs
+	if page <= 0 || limit <= 0 {
+		uc.log.Warn(ctx, "invalid pagination parameters",
+			zap.Int("page", page),
+			zap.Int("limit", limit))
+		return nil, domain.ErrInvalidInput
+	}
+
+	// Delegate to repository
+	paidOffers, err := uc.offerRepo.ListPaidOffers(ctx, page, limit)
+	if err != nil {
+		uc.log.Error(ctx, "failed to list paid offers",
+			zap.Int("page", page),
+			zap.Int("limit", limit),
+			zap.Error(err))
+		return nil, fmt.Errorf("list paid offers: %w", err)
+	}
+
+	return paidOffers, nil
 }

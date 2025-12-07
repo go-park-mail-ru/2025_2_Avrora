@@ -18,12 +18,6 @@ import (
 
 // SQL constants using actual schema
 const (
-	listPhotosForOfferQuery = `
-		SELECT image_url
-		FROM offer_photo
-		WHERE offer_id = $1
-		ORDER BY created_at DESC`
-
 	getOfferByIDQuery = `
 	SELECT
 		o.id,
@@ -234,6 +228,51 @@ const (
 		FROM offer
 		WHERE user_id = $1 AND status = 'active'
 		`
+
+	listPaidOffersQuery = `
+		SELECT 
+			o.id,
+			o.user_id,
+			o.offer_type,
+			o.property_type,
+			o.price,
+			o.area,
+			o.rooms,
+			o.floor,
+			o.total_floors,
+			o.address,
+			ms.name AS metro,
+			op.url AS image_url,
+			o.created_at,
+			o.updated_at
+		FROM paid_advertisement pa
+		JOIN offer o ON pa.offer_id = o.id
+		LEFT JOIN (
+			SELECT DISTINCT ON (location_id)
+				location_id,
+				metro_station_id
+			FROM location_metro
+			ORDER BY location_id, distance_meters ASC
+		) lm ON lm.location_id = o.location_id
+		LEFT JOIN metro_station ms ON ms.id = lm.metro_station_id
+		LEFT JOIN (
+			SELECT DISTINCT ON (offer_id)
+				offer_id,
+				url
+			FROM offer_photo
+			ORDER BY offer_id, created_at ASC
+		) op ON op.offer_id = o.id
+		WHERE pa.expires_at > NOW() AND o.status = 'active'
+		ORDER BY pa.created_at DESC
+		LIMIT $1 OFFSET $2
+	`
+
+	countPaidOffersQuery = `
+		SELECT COUNT(*)
+		FROM paid_advertisement pa
+		JOIN offer o ON pa.offer_id = o.id
+		WHERE pa.expires_at > NOW()
+	`
 )
 
 type OfferRepository struct {
@@ -800,4 +839,61 @@ func (r *OfferRepository) IsOfferLiked(ctx context.Context, offerID, userID stri
 		return false, fmt.Errorf("check offer like status: %w", err)
 	}
 	return liked, nil
+}
+
+// InsertPaidAdvertisement inserts a new paid advertisement.
+func (r *OfferRepository) InsertPaidAdvertisement(ctx context.Context, offerID string, expiresAt time.Time) error {
+	const query = `
+		INSERT INTO paid_advertisement (offer_id, expires_at)
+		VALUES ($1, $2)
+		ON CONFLICT (offer_id) DO NOTHING
+	`
+
+	_, err := r.db.Exec(ctx, query, offerID, expiresAt)
+	if err != nil {
+		r.log.Error(ctx, "failed to insert paid advertisement",
+			zap.String("offer_id", offerID),
+			zap.Time("expires_at", expiresAt),
+			zap.Error(err))
+		return fmt.Errorf("insert paid advertisement: %w", err)
+	}
+	return nil
+}
+
+// GetPaidAdvertisements retrieves all active paid advertisements.
+func (r *OfferRepository) ListPaidOffers(ctx context.Context, page, limit int) (*domain.OffersInFeed, error) {
+	offset := (page - 1) * limit
+
+	// Fetch paginated paid offers
+	rows, err := r.db.Query(ctx, listPaidOffersQuery, limit, offset)
+	if err != nil {
+		r.log.Error(ctx, "failed to list paid offers", zap.Error(err))
+		return nil, fmt.Errorf("list paid offers: %w", err)
+	}
+	defer rows.Close()
+
+	offers, err := scanOffersInFeed(rows)
+	if err != nil {
+		r.log.Error(ctx, "failed to scan paid offers", zap.Error(err))
+		return nil, fmt.Errorf("scan paid offers: %w", err)
+	}
+
+	// Count total paid offers
+	var total int
+	err = r.db.QueryRow(ctx, countPaidOffersQuery).Scan(&total)
+	if err != nil {
+		r.log.Error(ctx, "failed to count paid offers", zap.Error(err))
+		return nil, fmt.Errorf("count paid offers: %w", err)
+	}
+
+	return &domain.OffersInFeed{
+		Meta: struct {
+			Total  int
+			Offset int
+		}{
+			Total:  total,
+			Offset: offset,
+		},
+		Offers: offers,
+	}, nil
 }
