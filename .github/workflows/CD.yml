@@ -65,7 +65,7 @@ jobs:
           key: ${{ secrets.VM_SSH_KEY }}
           script: |
             cd /home/ubuntu/avrora/back/2025_2_Avrora
-            docker compose down
+            docker-compose down -v
             docker system prune -af
             git pull origin docker # For now xD
             docker-compose pull
