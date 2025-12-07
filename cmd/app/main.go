@@ -130,7 +130,7 @@ func main() {
 	mux.HandleFunc("/api/v1/offers/pricehistory/", offerHandler.GetOfferPriceHistory)
 	mux.HandleFunc("/api/v1/offers/viewcount/", offerHandler.GetViewCount)
 	mux.HandleFunc("/api/v1/offers/view/", offerHandler.ViewOffer)
-	mux.HandleFunc("/api/v1/offers/paid_offers", offerHandler.GetPaidOffers)
+	mux.HandleFunc("/api/v1/paid_offers", offerHandler.GetPaidOffers)
 
 	// Like tracking endpoints
 	mux.HandleFunc("/api/v1/offers/like/", authMW(offerHandler.ToggleLike))
