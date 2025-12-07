@@ -69,5 +69,5 @@ jobs:
           script: |
             cd /home/ubuntu/avrora/back/2025_2_Avrora
             git pull origin docker # For now xD
-            docker compose pull
-            docker compose up -d
+            docker-compose pull
+            docker-compose up -d
