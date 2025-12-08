@@ -11,18 +11,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Check out the repository
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Step 2: Log in to Docker Hub
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
 
-      # Step 3: Build and push auth-service
       - name: Build and push auth-service
         uses: docker/build-push-action@v4
         with:
@@ -32,7 +29,6 @@ jobs:
           push: true
           tags: stepone1337/avrora-auth-service:latest
 
-      # Step 4: Build and push fileserver-service
       - name: Build and push fileserver-service
         uses: docker/build-push-action@v4
         with:
@@ -42,7 +38,6 @@ jobs:
           push: true
           tags: stepone1337/avrora-fileserver-service:latest
 
-      # Step 5: Build and push avrora-app
       - name: Build and push avrora-app
         uses: docker/build-push-action@v4
         with:
@@ -54,7 +49,7 @@ jobs:
 
   deploy-to-vm:
     needs: build-and-push
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     steps:
       - name: Deploy to VM
@@ -67,6 +62,6 @@ jobs:
             cd /home/ubuntu/avrora/back/2025_2_Avrora
             docker-compose down -v
             docker system prune -af
-            git pull origin docker # For now xD
+            git pull origin docker # TODO change to main
             docker-compose pull
             docker-compose up -d
