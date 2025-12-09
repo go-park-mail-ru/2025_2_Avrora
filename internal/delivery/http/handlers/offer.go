@@ -3,7 +3,10 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/middleware"
@@ -351,6 +354,17 @@ func (o *offerHandler) WebHook(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Ошибка при чтении данных", http.StatusBadRequest)
 		return
 	}
+	ip := getClientIP(r)
+	if ip != "77.75.153.78" && r.UserAgent() != "AHC/2.1" {
+		o.logger.Error(r.Context(), "invalid webhook request")
+		response.HandleError(w, err, http.StatusBadRequest, "доступ запрещен")
+		return
+	}
+
+	if !body.Object.Paid {
+		response.HandleError(w, err, http.StatusPaymentRequired, "не оплачено")
+		return
+	}
 
 	offer_id := body.Object.Metadata["offer_id"]
 	_, err = o.offerUsecase.Get(r.Context(), offer_id)
@@ -366,7 +380,8 @@ func (o *offerHandler) WebHook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response.WriteJSON(w, http.StatusOK, "успешно регистрация оплаты")
+	fmt.Println("success!")
+	response.WriteJSON(w, http.StatusOK, "успешная регистрация оплаты")
 }
 
 func (o *offerHandler) GetPaidOffers(w http.ResponseWriter, r *http.Request) {
@@ -376,4 +391,17 @@ func (o *offerHandler) GetPaidOffers(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response.WriteJSON(w, http.StatusOK, offers)
+}
+
+func getClientIP(r *http.Request) string {
+	for _, h := range []string{"X-Forwarded-For", "X-Real-IP"} {
+		if ip := r.Header.Get(h); ip != "" {
+			if idx := strings.Index(ip, ","); idx != -1 {
+				ip = ip[:idx]
+			}
+			return strings.TrimSpace(ip)
+		}
+	}
+	host, _, _ := net.SplitHostPort(r.RemoteAddr)
+	return host
 }
