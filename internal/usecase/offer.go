@@ -187,7 +187,7 @@ func (uc *offerUsecase) ToggleOfferLike(ctx context.Context, offerID, userID str
 			zap.String("user_id", userID))
 		return domain.ErrInvalidInput
 	}
-	
+
 	return uc.offerRepo.ToggleLike(ctx, offerID, userID)
 }
 
@@ -197,7 +197,7 @@ func (uc *offerUsecase) GetOfferViewCount(ctx context.Context, offerID string) (
 		uc.log.Warn(ctx, "empty offer ID for view count")
 		return 0, domain.ErrInvalidInput
 	}
-	
+
 	return uc.offerRepo.GetOfferViewCount(ctx, offerID)
 }
 
@@ -207,7 +207,7 @@ func (uc *offerUsecase) GetOfferLikeCount(ctx context.Context, offerID string) (
 		uc.log.Warn(ctx, "empty offer ID for like count")
 		return 0, domain.ErrInvalidInput
 	}
-	
+
 	return uc.offerRepo.GetOfferLikeCount(ctx, offerID)
 }
 
@@ -217,11 +217,11 @@ func (uc *offerUsecase) IsOfferLiked(ctx context.Context, offerID, userID string
 		uc.log.Warn(ctx, "missing offer or user ID for like check",
 			zap.String("offer_id", offerID),
 			zap.String("user_id", userID))
-		
+
 		// Return false for invalid inputs (safe default)
 		return false, nil
 	}
-	
+
 	return uc.offerRepo.IsOfferLiked(ctx, offerID, userID)
 }
 
@@ -272,4 +272,14 @@ func (uc *offerUsecase) ListPaidOffers(ctx context.Context, page, limit int) (*d
 	}
 
 	return paidOffers, nil
+}
+func (uc *offerUsecase) ListLikedOffersByUserID(
+	ctx context.Context,
+	userID string,
+	page, limit int,
+) (*domain.OffersInFeed, error) {
+	if userID == "" {
+		return nil, domain.ErrInvalidInput
+	}
+	return uc.offerRepo.ListLikedOffersByUserID(ctx, userID, page, limit)
 }

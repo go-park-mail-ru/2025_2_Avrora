@@ -293,7 +293,7 @@ func scanOfferRow(scanner interface {
 		deposit, commission     *int64
 		rentalPeriod            *string
 		livingArea, kitchenArea *float64
-		metro                   *string   // ← ADDED: metro station name (nullable)
+		metro                   *string // ← ADDED: metro station name (nullable)
 		imageURLs               []string
 		offer                   domain.Offer
 	)
@@ -319,7 +319,7 @@ func scanOfferRow(scanner interface {
 		&rentalPeriod,
 		&livingArea,
 		&kitchenArea,
-		&metro,          // ← ADDED in correct position (after kitchenArea, before imageURLs)
+		&metro, // ← ADDED in correct position (after kitchenArea, before imageURLs)
 		&imageURLs,
 		&offer.CreatedAt,
 		&offer.UpdatedAt,
@@ -769,11 +769,11 @@ func (r *OfferRepository) GetOfferPriceHistory(ctx context.Context, id string) (
 // Log a view event for an offer
 func (r *OfferRepository) LogView(ctx context.Context, offerID string) error {
 	const query = `SELECT log_offer_view($1)`
-	
+
 	_, err := r.db.Exec(ctx, query, offerID)
 	if err != nil {
-		r.log.Error(ctx, "failed to log offer view", 
-			zap.String("offer_id", offerID), 
+		r.log.Error(ctx, "failed to log offer view",
+			zap.String("offer_id", offerID),
 			zap.Error(err))
 		return fmt.Errorf("log offer view: %w", err)
 	}
@@ -783,11 +783,11 @@ func (r *OfferRepository) LogView(ctx context.Context, offerID string) error {
 // Toggle like status for an offer
 func (r *OfferRepository) ToggleLike(ctx context.Context, offerID, userID string) error {
 	const query = `SELECT toggle_offer_like($1, $2)`
-	
+
 	_, err := r.db.Exec(ctx, query, offerID, userID)
 	if err != nil {
-		r.log.Error(ctx, "failed to toggle offer like", 
-			zap.String("offer_id", offerID), 
+		r.log.Error(ctx, "failed to toggle offer like",
+			zap.String("offer_id", offerID),
 			zap.String("user_id", userID),
 			zap.Error(err))
 		return fmt.Errorf("toggle offer like: %w", err)
@@ -798,12 +798,12 @@ func (r *OfferRepository) ToggleLike(ctx context.Context, offerID, userID string
 // Get total view count for an offer
 func (r *OfferRepository) GetOfferViewCount(ctx context.Context, id string) (int, error) {
 	const query = `SELECT get_offer_view_count($1)`
-	
+
 	var count int
 	err := r.db.QueryRow(ctx, query, id).Scan(&count)
 	if err != nil {
-		r.log.Error(ctx, "failed to get offer view count", 
-			zap.String("offer_id", id), 
+		r.log.Error(ctx, "failed to get offer view count",
+			zap.String("offer_id", id),
 			zap.Error(err))
 		return 0, fmt.Errorf("get offer view count: %w", err)
 	}
@@ -813,12 +813,12 @@ func (r *OfferRepository) GetOfferViewCount(ctx context.Context, id string) (int
 // Get total like count for an offer
 func (r *OfferRepository) GetOfferLikeCount(ctx context.Context, id string) (int, error) {
 	const query = `SELECT get_offer_like_count($1)`
-	
+
 	var count int
 	err := r.db.QueryRow(ctx, query, id).Scan(&count)
 	if err != nil {
-		r.log.Error(ctx, "failed to get offer like count", 
-			zap.String("offer_id", id), 
+		r.log.Error(ctx, "failed to get offer like count",
+			zap.String("offer_id", id),
 			zap.Error(err))
 		return 0, fmt.Errorf("get offer like count: %w", err)
 	}
@@ -828,12 +828,12 @@ func (r *OfferRepository) GetOfferLikeCount(ctx context.Context, id string) (int
 // Check if user has liked an offer
 func (r *OfferRepository) IsOfferLiked(ctx context.Context, offerID, userID string) (bool, error) {
 	const query = `SELECT is_offer_liked($1, $2)`
-	
+
 	var liked bool
 	err := r.db.QueryRow(ctx, query, offerID, userID).Scan(&liked)
 	if err != nil {
-		r.log.Error(ctx, "failed to check if offer is liked", 
-			zap.String("offer_id", offerID), 
+		r.log.Error(ctx, "failed to check if offer is liked",
+			zap.String("offer_id", offerID),
 			zap.String("user_id", userID),
 			zap.Error(err))
 		return false, fmt.Errorf("check offer like status: %w", err)
@@ -884,6 +884,89 @@ func (r *OfferRepository) ListPaidOffers(ctx context.Context, page, limit int) (
 	if err != nil {
 		r.log.Error(ctx, "failed to count paid offers", zap.Error(err))
 		return nil, fmt.Errorf("count paid offers: %w", err)
+	}
+
+	return &domain.OffersInFeed{
+		Meta: struct {
+			Total  int
+			Offset int
+		}{
+			Total:  total,
+			Offset: offset,
+		},
+		Offers: offers,
+	}, nil
+}
+
+const listLikedOffersByUserIDQuery = `SELECT
+    o.id,
+    o.user_id,
+    o.offer_type,
+    o.property_type,
+    o.price,
+    o.area,
+    o.rooms,
+    o.floor,
+    o.total_floors,
+    o.address,
+    ms.name AS metro,
+    op.url AS image_url,
+    o.created_at,
+    o.updated_at
+FROM offer_like ol
+JOIN offer o ON ol.offer_id = o.id
+LEFT JOIN (
+    SELECT DISTINCT ON (location_id) location_id, metro_station_id
+    FROM location_metro
+    ORDER BY location_id, distance_meters ASC
+) lm ON lm.location_id = o.location_id
+LEFT JOIN metro_station ms ON ms.id = lm.metro_station_id
+LEFT JOIN (
+    SELECT DISTINCT ON (offer_id) offer_id, url
+    FROM offer_photo
+    ORDER BY offer_id, created_at ASC
+) op ON op.offer_id = o.id
+WHERE ol.user_id = $1 AND o.status = 'active'
+ORDER BY ol.liked_at DESC
+LIMIT $2 OFFSET $3`
+
+func (r *OfferRepository) ListLikedOffersByUserID(
+	ctx context.Context,
+	userID string,
+	page, limit int,
+) (*domain.OffersInFeed, error) {
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 10
+	}
+	offset := (page - 1) * limit
+
+	rows, err := r.db.Query(ctx, listLikedOffersByUserIDQuery, userID, limit, offset)
+	if err != nil {
+		r.log.Error(ctx, "failed to list liked offers by user",
+			zap.String("user_id", userID), zap.Error(err))
+		return nil, err
+	}
+	defer rows.Close()
+
+	offers, err := scanOffersInFeed(rows)
+	if err != nil {
+		r.log.Error(ctx, "failed to scan liked offers", zap.Error(err))
+		return nil, err
+	}
+
+	// Подсчёт общего количества лайкнутых объявлений
+	var total int
+	err = r.db.QueryRow(ctx, `
+		SELECT COUNT(*)
+		FROM offer_like ol
+		JOIN offer o ON ol.offer_id = o.id
+		WHERE ol.user_id = $1 AND o.status = 'active'
+	`, userID).Scan(&total)
+	if err != nil {
+		r.log.Warn(ctx, "failed to count liked offers", zap.Error(err))
 	}
 
 	return &domain.OffersInFeed{

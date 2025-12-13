@@ -27,6 +27,7 @@ type IOfferRepository interface {
 	IsOfferLiked(ctx context.Context, offerID, userID string) (bool, error)
 	ListPaidOffers(ctx context.Context, page, limit int) (*domain.OffersInFeed, error)
 	InsertPaidAdvertisement(ctx context.Context, offerID string, expiresAt time.Time) error
+	ListLikedOffersByUserID(ctx context.Context, userID string, page, limit int) (*domain.OffersInFeed, error)
 }
 
 type offerUsecase struct {

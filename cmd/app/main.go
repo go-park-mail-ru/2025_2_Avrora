@@ -29,7 +29,7 @@ func startMetricsServer() {
 			log.Fatal("failed to start metrics server", zap.Error(err))
 		}
 		log.Println(context.Background(), "Metrics server started on port 8081", zap.String("port", "8081"))
-	}()	
+	}()
 }
 
 func main() {
@@ -143,7 +143,7 @@ func main() {
 	mux.HandleFunc("/api/v1/profile/security/", authMW(profileHandler.UpdateProfileSecurityByID))
 	mux.HandleFunc("/api/v1/profile/email/", authMW(profileHandler.UpdateEmail))
 	mux.HandleFunc("/api/v1/profile/myoffers/", authMW(offerHandler.GetMyOffers))
-
+	mux.HandleFunc("/api/v1/offers/liked", authMW(offerHandler.GetLikedOffers))
 	// Complex
 	mux.HandleFunc("/api/v1/complexes/list", complexHandler.ListComplexes)
 	mux.HandleFunc("/api/v1/complexes/create", authMW(complexHandler.CreateComplex))
@@ -163,7 +163,7 @@ func main() {
 
 	// Start metrics server
 	startMetricsServer()
-	time.Sleep(500*time.Millisecond)
+	time.Sleep(500 * time.Millisecond)
 
 	appLogger.Logger.Info("starting server", zap.String("port", port))
 	appLogger.Logger.Fatal("server stopped", zap.Error(http.ListenAndServe(":"+port, handler)))
