@@ -3,9 +3,11 @@ package handlers
 import (
 	"context"
 	"encoding/json"
-	"go.uber.org/zap"
 	"net/http"
 	"strconv"
+	"time"
+
+	"go.uber.org/zap"
 
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/domain"
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/log"
@@ -20,6 +22,13 @@ type IOfferUsecase interface {
 	ListOffersInFeedByUserID(ctx context.Context, userID string, page, limit int) (*domain.OffersInFeed, error)
 	FilterOffers(ctx context.Context, f *domain.OfferFilter, limit, offset int) ([]domain.OfferInFeed, error)
 	GetOfferPriceHistory(ctx context.Context, id string) ([]domain.PricePoint, error)
+	ViewOffer(ctx context.Context, offerID string) error
+	ToggleOfferLike(ctx context.Context, offerID, userID string) error
+	GetOfferViewCount(ctx context.Context, offerID string) (int, error)
+	GetOfferLikeCount(ctx context.Context, offerID string) (int, error)
+	IsOfferLiked(ctx context.Context, offerID, userID string) (bool, error)
+	ListPaidOffers(ctx context.Context, page, limit int) (*domain.OffersInFeed, error)
+	InsertPaidAdvertisement(ctx context.Context, offerID string, expiresAt time.Time) error
 }
 
 type offerHandler struct {

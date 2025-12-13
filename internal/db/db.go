@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"database/sql"
 
+	_ "github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	migrate "github.com/golang-migrate/migrate/v4"

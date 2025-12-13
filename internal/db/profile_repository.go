@@ -13,17 +13,6 @@ import (
 )
 
 const (
-	selectProfileWithUser = `
-		p.id, p.user_id, p.first_name, p.last_name, p.phone, p.avatar_url,
-		p.created_at, p.updated_at,
-		u.email`
-
-	getProfileByUserIDQuery = `
-		SELECT ` + selectProfileWithUser + `
-		FROM profile p
-		JOIN users u ON p.user_id = u.id
-		WHERE p.user_id = '$1'`
-
 	getUserAndProfileLeftJoinQuery = `
 		SELECT 
 			p.id,

@@ -2,18 +2,31 @@ package main
 
 import (
 	"context"
+	"log"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
 	service "github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/grpc"
+	"github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/middleware"
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/utils"
 	logger "github.com/go-park-mail-ru/2025_2_Avrora/internal/log"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
+
+func startMetricsServer() {
+	http.Handle("/metrics", promhttp.Handler())
+	go func() {
+		if err := http.ListenAndServe(":8083", nil); err != nil {
+			log.Fatal("failed to start metrics server", zap.Error(err))
+		}
+	}()
+}
 
 func main() {
 	utils.LoadEnv()
@@ -44,27 +57,29 @@ func main() {
 		baseURL = "/api/v1/image"
 	}
 
-	// Create gRPC server
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(
+		grpc.UnaryInterceptor(middleware.GRPCMetricsInterceptor), 
+	)
+
 	service.RegisterFileServerServer(grpcServer, grpcLogger)
 
-	// Start listening
 	lis, err := net.Listen("tcp", ":"+port)
 	if err != nil {
 		grpcLogger.Logger.Fatal("failed to listen", zap.Error(err), zap.String("port", port))
 	}
 
-	// Graceful shutdown handling
+	startMetricsServer()
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	// Start server in goroutine
 	go func() {
-		grpcLogger.Logger.Info("fileserver gRPC server starting", 
+		grpcLogger.Logger.Info("fileserver gRPC server starting",
 			zap.String("port", port),
 			zap.String("storage_dir", storageDir),
 			zap.String("base_url", baseURL))
-		
+
 		if err := grpcServer.Serve(lis); err != nil {
 			grpcLogger.Logger.Error("gRPC server failed", zap.Error(err))
 			stop()
@@ -73,14 +88,12 @@ func main() {
 
 	<-ctx.Done()
 
-	// Graceful shutdown
 	grpcLogger.Logger.Info("shutting down fileserver gRPC server...")
 	grpcServer.GracefulStop()
-	
-	// Allow some time for cleanup
+
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
-	
+
 	select {
 	case <-shutdownCtx.Done():
 		grpcLogger.Logger.Info("fileserver gRPC server stopped")

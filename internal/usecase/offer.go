@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/domain"
 	"github.com/google/uuid"
@@ -166,4 +167,109 @@ func (uc *offerUsecase) Delete(ctx context.Context, id string) error {
 		return domain.ErrInvalidInput
 	}
 	return uc.offerRepo.Delete(ctx, id)
+}
+
+// ViewOffer records a view event for an offer (can be anonymous)
+func (uc *offerUsecase) ViewOffer(ctx context.Context, offerID string) error {
+	if offerID == "" {
+		uc.log.Warn(ctx, "empty offer ID for view")
+		return domain.ErrInvalidInput
+	}
+
+	return uc.offerRepo.LogView(ctx, offerID)
+}
+
+// ToggleOfferLike toggles like status for an authenticated user
+func (uc *offerUsecase) ToggleOfferLike(ctx context.Context, offerID, userID string) error {
+	if offerID == "" || userID == "" {
+		uc.log.Warn(ctx, "missing offer or user ID for like toggle",
+			zap.String("offer_id", offerID),
+			zap.String("user_id", userID))
+		return domain.ErrInvalidInput
+	}
+	
+	return uc.offerRepo.ToggleLike(ctx, offerID, userID)
+}
+
+// GetOfferViewCount retrieves total views for an offer
+func (uc *offerUsecase) GetOfferViewCount(ctx context.Context, offerID string) (int, error) {
+	if offerID == "" {
+		uc.log.Warn(ctx, "empty offer ID for view count")
+		return 0, domain.ErrInvalidInput
+	}
+	
+	return uc.offerRepo.GetOfferViewCount(ctx, offerID)
+}
+
+// GetOfferLikeCount retrieves total likes for an offer
+func (uc *offerUsecase) GetOfferLikeCount(ctx context.Context, offerID string) (int, error) {
+	if offerID == "" {
+		uc.log.Warn(ctx, "empty offer ID for like count")
+		return 0, domain.ErrInvalidInput
+	}
+	
+	return uc.offerRepo.GetOfferLikeCount(ctx, offerID)
+}
+
+// IsOfferLiked checks if current user has liked an offer
+func (uc *offerUsecase) IsOfferLiked(ctx context.Context, offerID, userID string) (bool, error) {
+	if offerID == "" || userID == "" {
+		uc.log.Warn(ctx, "missing offer or user ID for like check",
+			zap.String("offer_id", offerID),
+			zap.String("user_id", userID))
+		
+		// Return false for invalid inputs (safe default)
+		return false, nil
+	}
+	
+	return uc.offerRepo.IsOfferLiked(ctx, offerID, userID)
+}
+
+// InsertPaidAdvertisement inserts a new paid advertisement.
+func (uc *offerUsecase) InsertPaidAdvertisement(ctx context.Context, offerID string, expiresAt time.Time) error {
+	// Validate inputs
+	if offerID == "" {
+		uc.log.Warn(ctx, "empty offer ID for paid advertisement")
+		return domain.ErrInvalidInput
+	}
+	if expiresAt.Before(time.Now()) {
+		uc.log.Warn(ctx, "invalid expiration time for paid advertisement",
+			zap.Time("expires_at", expiresAt))
+		return domain.ErrInvalidInput
+	}
+
+	// Delegate to repository
+	err := uc.offerRepo.InsertPaidAdvertisement(ctx, offerID, expiresAt)
+	if err != nil {
+		uc.log.Error(ctx, "failed to insert paid advertisement",
+			zap.String("offer_id", offerID),
+			zap.Time("expires_at", expiresAt),
+			zap.Error(err))
+		return fmt.Errorf("insert paid advertisement: %w", err)
+	}
+
+	return nil
+}
+
+// ListPaidOffers retrieves paginated paid offers in the OffersInFeed format.
+func (uc *offerUsecase) ListPaidOffers(ctx context.Context, page, limit int) (*domain.OffersInFeed, error) {
+	// Validate inputs
+	if page <= 0 || limit <= 0 {
+		uc.log.Warn(ctx, "invalid pagination parameters",
+			zap.Int("page", page),
+			zap.Int("limit", limit))
+		return nil, domain.ErrInvalidInput
+	}
+
+	// Delegate to repository
+	paidOffers, err := uc.offerRepo.ListPaidOffers(ctx, page, limit)
+	if err != nil {
+		uc.log.Error(ctx, "failed to list paid offers",
+			zap.Int("page", page),
+			zap.Int("limit", limit),
+			zap.Error(err))
+		return nil, fmt.Errorf("list paid offers: %w", err)
+	}
+
+	return paidOffers, nil
 }

@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches-ignore:
+      - '**'
+    paths:
+      - '**'
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest  # Use the latest Ubuntu runner
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3  # Fetch the repository code
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.25'  # Specify the Go version you're using
+
+      - name: Run tests
+        run: go test ./... --race -coverprofile=cover.out && go tool cover -html=cover.out -o=cover.html
