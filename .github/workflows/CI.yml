@@ -2,9 +2,10 @@ name: CI
 
 on:
   push:
-    branches:
-      - main
-      - docker
+    branches-ignore:
+      - '**'
+    paths:
+      - '**'
   pull_request:
     branches:
       - main
