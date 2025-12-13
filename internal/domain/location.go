@@ -1,7 +1,7 @@
 package domain
 
 import "time"
-
+//go:generate easyjson -all $GOFILE
 type Location struct {
 	ID        string
 	RegionID  string
@@ -10,7 +10,7 @@ type Location struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
-
+//easyjson:json
 type GetLocation struct {
 	ID        string
 	Region    string // Region name for instance: 'Moscow' | 'Russia' | 'Tverskoy District' etc.

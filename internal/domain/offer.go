@@ -5,11 +5,23 @@ import (
 	"time"
 )
 
+//go:generate easyjson -all $GOFILE
+
 type OfferType string
+
+
 type PropertyType string
+
+
 type OfferStatus string
+
+
 type OfferID string
+
+
 type PhotoURL string
+
+
 
 const (
 	OfferTypeSale OfferType = "sale"
@@ -23,6 +35,7 @@ const (
 	OfferStatusArchived OfferStatus = "archived"
 )
 
+//easyjson:json
 type Offer struct {
 	ID               string  // UUID
 	UserID           string  // UUID
@@ -50,6 +63,7 @@ type Offer struct {
 	UpdatedAt        time.Time
 }
 
+//easyjson:json
 type OfferFilter struct {
 	OfferType    *string  `json:"offer_type"`
 	PropertyType *string  `json:"property_type"`
@@ -64,6 +78,8 @@ type OfferFilter struct {
 }
 
 // For feed (simplified + joined data)
+//
+//easyjson:json
 type OfferInFeed struct {
 	ID           string
 	UserID       string
@@ -84,11 +100,13 @@ type OfferInFeed struct {
 	UpdatedAt    time.Time
 }
 
+//easyjson:json
 type PricePoint struct {
 	Date  time.Time `json:"date"`
 	Price int64     `json:"price"`
 }
 
+//easyjson:json
 type OffersInFeed struct {
 	Meta struct {
 		Total  int
@@ -97,6 +115,7 @@ type OffersInFeed struct {
 	Offers []OfferInFeed
 }
 
+//easyjson:json
 type OfferCreate struct {
 	HousingComplexID *string
 	OfferType        OfferType
@@ -117,6 +136,7 @@ type OfferCreate struct {
 	ImageURLs        []string
 }
 
+//easyjson:json
 type FirstPhotosForOffers struct { // For offers in feed
 	Photos map[OfferID]PhotoURL
 }

@@ -1,10 +1,9 @@
 package domain
-
+//go:generate easyjson -all $GOFILE
 import (
 	"errors"
 	"time"
 )
-
 type UserRole string
 
 const (
@@ -12,7 +11,7 @@ const (
 	UserRoleOwner   UserRole = "owner"
 	UserRoleRealtor UserRole = "realtor"
 )
-
+//easyjson:json
 type User struct {
 	ID           string
 	Email        string
@@ -21,7 +20,7 @@ type User struct {
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }
-
+//easyjson:json
 type UserEmailUpdate struct {
 	Email string
 }
