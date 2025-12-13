@@ -3,8 +3,13 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"net"
 	"net/http"
+	"strings"
+	"time"
 
+	"github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/middleware"
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/response"
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/utils"
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/domain"
@@ -183,7 +188,7 @@ func (o *offerHandler) GetOffer(w http.ResponseWriter, r *http.Request) {
 }
 
 func (o *offerHandler) GetMyOffers(w http.ResponseWriter, r *http.Request) {
-	userID := GetPathParameter(r, "/api/v1/profile/myoffers/")
+	userID := GetPathParameter(r, "/api/v1/profile/myoffers")
 	if userID == "" {
 		o.logger.Error(r.Context(), "invalid or no userID")
 		response.HandleError(w, nil, http.StatusBadRequest, "нет userID")
@@ -210,4 +215,193 @@ func (o *offerHandler) GetOfferPriceHistory(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	response.WriteJSON(w, http.StatusOK, points)
+}
+
+// ViewOffer logs a view event for an offer (can be anonymous)
+func (o *offerHandler) ViewOffer(w http.ResponseWriter, r *http.Request) {
+	offerID := GetPathParameter(r, "/api/v1/offers/view/")
+	if offerID == "" {
+		o.logger.Error(r.Context(), "invalid or no offerID for view")
+		response.HandleError(w, nil, http.StatusBadRequest, "нет offerID")
+		return
+	}
+	
+	if err := o.offerUsecase.ViewOffer(r.Context(), offerID); err != nil {
+		if errors.Is(err, domain.ErrInvalidInput) {
+			response.HandleError(w, err, http.StatusBadRequest, "неверные данные запроса")
+			return
+		}
+		response.HandleError(w, err, http.StatusInternalServerError, "ошибка регистрации просмотра")
+		return
+	}
+	
+	response.WriteJSON(w, http.StatusNoContent, nil)
+}
+
+// ToggleLike toggles like status for an offer
+func (o *offerHandler) ToggleLike(w http.ResponseWriter, r *http.Request) {
+	offerID := GetPathParameter(r, "/api/v1/offers/like/")
+	if offerID == "" {
+		o.logger.Error(r.Context(), "invalid or no offerID for like")
+		response.HandleError(w, nil, http.StatusBadRequest, "нет offerID")
+		return
+	}
+	
+	// Must have authenticated user
+	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	if !ok {
+		o.logger.Warn(r.Context(), "unauthenticated like attempt")
+		response.HandleError(w, nil, http.StatusUnauthorized, "требуется аутентификация")
+		return
+	}
+	
+	if err := o.offerUsecase.ToggleOfferLike(r.Context(), offerID, userID); err != nil {
+		if errors.Is(err, domain.ErrInvalidInput) {
+			response.HandleError(w, err, http.StatusBadRequest, "неверные данные запроса")
+			return
+		}
+		response.HandleError(w, err, http.StatusInternalServerError, "ошибка обработки лайка")
+		return
+	}
+	
+	response.WriteJSON(w, http.StatusNoContent, nil)
+}
+
+// GetViewCount returns total views for an offer
+func (o *offerHandler) GetViewCount(w http.ResponseWriter, r *http.Request) {
+	offerID := GetPathParameter(r, "/api/v1/offers/viewcount/")
+	if offerID == "" {
+		o.logger.Error(r.Context(), "invalid or no offerID for view count")
+		response.HandleError(w, nil, http.StatusBadRequest, "нет offerID")
+		return
+	}
+	
+	count, err := o.offerUsecase.GetOfferViewCount(r.Context(), offerID)
+	if err != nil {
+		if errors.Is(err, domain.ErrInvalidInput) {
+			response.HandleError(w, err, http.StatusBadRequest, "неверные данные запроса")
+			return
+		}
+		response.HandleError(w, err, http.StatusInternalServerError, "ошибка получения просмотров")
+		return
+	}
+	
+	response.WriteJSON(w, http.StatusOK, map[string]int{"count": count})
+}
+
+// GetLikeCount returns total likes for an offer
+func (o *offerHandler) GetLikeCount(w http.ResponseWriter, r *http.Request) {
+	offerID := GetPathParameter(r, "/api/v1/offers/likecount/")
+	if offerID == "" {
+		o.logger.Error(r.Context(), "invalid or no offerID for like count")
+		response.HandleError(w, nil, http.StatusBadRequest, "нет offerID")
+		return
+	}
+	
+	count, err := o.offerUsecase.GetOfferLikeCount(r.Context(), offerID)
+	if err != nil {
+		if errors.Is(err, domain.ErrInvalidInput) {
+			response.HandleError(w, err, http.StatusBadRequest, "неверные данные запроса")
+			return
+		}
+		response.HandleError(w, err, http.StatusInternalServerError, "ошибка получения лайков")
+		return
+	}
+	
+	response.WriteJSON(w, http.StatusOK, map[string]int{"count": count})
+}
+
+// IsOfferLiked checks if current user liked an offer
+func (o *offerHandler) IsOfferLiked(w http.ResponseWriter, r *http.Request) {
+	offerID := GetPathParameter(r, "/api/v1/offers/isliked/")
+	if offerID == "" {
+		o.logger.Error(r.Context(), "invalid or no offerID for like check")
+		response.HandleError(w, nil, http.StatusBadRequest, "нет offerID")
+		return
+	}
+	
+	// Must have authenticated user
+	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	if !ok {
+		o.logger.Warn(r.Context(), "unauthenticated like check")
+		response.HandleError(w, nil, http.StatusUnauthorized, "требуется аутентификация")
+		return
+	}
+	
+	isLiked, err := o.offerUsecase.IsOfferLiked(r.Context(), offerID, userID)
+	if err != nil {
+		if errors.Is(err, domain.ErrInvalidInput) {
+			response.HandleError(w, err, http.StatusBadRequest, "неверные данные запроса")
+			return
+		}
+		response.HandleError(w, err, http.StatusInternalServerError, "ошибка проверки лайка")
+		return
+	}
+	
+	response.WriteJSON(w, http.StatusOK, map[string]bool{"is_liked": isLiked})
+}
+
+func (o *offerHandler) WebHook(w http.ResponseWriter, r *http.Request) {
+	o.logger.Info(r.Context(), "webhook request received")
+	if r.Method != http.MethodPost {
+		http.Error(w, "Метод не поддерживается", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var body WebhookRequest
+	err := json.NewDecoder(r.Body).Decode(&body)
+	if err != nil {
+		http.Error(w, "Ошибка при чтении данных", http.StatusBadRequest)
+		return
+	}
+	ip := getClientIP(r)
+	if ip != "77.75.153.78" && r.UserAgent() != "AHC/2.1" {
+		o.logger.Error(r.Context(), "invalid webhook request")
+		response.HandleError(w, err, http.StatusBadRequest, "доступ запрещен")
+		return
+	}
+
+	if !body.Object.Paid {
+		response.HandleError(w, err, http.StatusPaymentRequired, "не оплачено")
+		return
+	}
+
+	offer_id := body.Object.Metadata["offer_id"]
+	_, err = o.offerUsecase.Get(r.Context(), offer_id)
+	if err != nil {
+		o.logger.Error(r.Context(), "ошибка получения предложения")
+		response.HandleError(w, err, http.StatusInternalServerError, "ошибка получения предложения")
+		return
+	}
+
+	err = o.offerUsecase.InsertPaidAdvertisement(r.Context(), offer_id, time.Now().Add(7 * time.Hour * 24))
+	if err != nil {
+		response.HandleError(w, err, http.StatusInternalServerError, "ошибка регистрации оплаты")
+		return
+	}
+
+	fmt.Println("success!")
+	response.WriteJSON(w, http.StatusOK, "успешная регистрация оплаты")
+}
+
+func (o *offerHandler) GetPaidOffers(w http.ResponseWriter, r *http.Request) {
+	offers, err := o.offerUsecase.ListPaidOffers(r.Context(), 1, 10); if err != nil {
+		response.HandleError(w, err, http.StatusInternalServerError, "ошибка получения оплаченных предложений")
+		return
+	}
+
+	response.WriteJSON(w, http.StatusOK, offers)
+}
+
+func getClientIP(r *http.Request) string {
+	for _, h := range []string{"X-Forwarded-For", "X-Real-IP"} {
+		if ip := r.Header.Get(h); ip != "" {
+			if idx := strings.Index(ip, ","); idx != -1 {
+				ip = ip[:idx]
+			}
+			return strings.TrimSpace(ip)
+		}
+	}
+	host, _, _ := net.SplitHostPort(r.RemoteAddr)
+	return host
 }

@@ -3,9 +3,13 @@ package handlers
 import (
 	"context"
 	"encoding/json"
-	"go.uber.org/zap"
+	"github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/middleware"
+	"github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/response"
 	"net/http"
 	"strconv"
+	"time"
+
+	"go.uber.org/zap"
 
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/domain"
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/log"
@@ -20,6 +24,14 @@ type IOfferUsecase interface {
 	ListOffersInFeedByUserID(ctx context.Context, userID string, page, limit int) (*domain.OffersInFeed, error)
 	FilterOffers(ctx context.Context, f *domain.OfferFilter, limit, offset int) ([]domain.OfferInFeed, error)
 	GetOfferPriceHistory(ctx context.Context, id string) ([]domain.PricePoint, error)
+	ViewOffer(ctx context.Context, offerID string) error
+	ToggleOfferLike(ctx context.Context, offerID, userID string) error
+	GetOfferViewCount(ctx context.Context, offerID string) (int, error)
+	GetOfferLikeCount(ctx context.Context, offerID string) (int, error)
+	IsOfferLiked(ctx context.Context, offerID, userID string) (bool, error)
+	ListPaidOffers(ctx context.Context, page, limit int) (*domain.OffersInFeed, error)
+	InsertPaidAdvertisement(ctx context.Context, offerID string, expiresAt time.Time) error
+	ListLikedOffersByUserID(ctx context.Context, userID string, page, limit int) (*domain.OffersInFeed, error)
 }
 
 type offerHandler struct {
@@ -98,4 +110,43 @@ func (h *offerHandler) FilterOffers(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(offers); err != nil {
 		http.Error(w, "failed to encode response", http.StatusInternalServerError)
 	}
+}
+
+// GetLikedOffers returns offers liked by the current authenticated user ("Избранное")
+func (h *offerHandler) GetLikedOffers(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	// Получаем userID из контекста (мидлвара аутентификации уже положил его туда)
+	userID, ok := middleware.GetUserIDFromContext(ctx)
+	if !ok {
+		h.logger.Warn(ctx, "unauthenticated request to /liked")
+		response.HandleError(w, nil, http.StatusUnauthorized, "требуется аутентификация")
+		return
+	}
+
+	// Пагинация
+	page, err := parseIntQueryParam(r, "page", 1)
+	if err != nil {
+		page = 1
+	}
+	limit, err := parseIntQueryParam(r, "limit", 10)
+	if err != nil || limit < 1 || limit > 100 {
+		limit = 10
+	}
+
+	// Вызываем usecase
+	offers, err := h.offerUsecase.ListLikedOffersByUserID(ctx, userID, page, limit)
+	if err != nil {
+		h.logger.Error(ctx, "failed to get liked offers",
+			zap.String("user_id", userID), zap.Error(err))
+		response.HandleError(w, err, http.StatusInternalServerError, "ошибка получения избранного")
+		return
+	}
+
+	// ⚠️ Опционально: проставить IsLiked = true для всех — логично для "избранного"
+	for i := range offers.Offers {
+		offers.Offers[i].IsLiked = true
+	}
+
+	response.WriteJSON(w, http.StatusOK, offers)
 }

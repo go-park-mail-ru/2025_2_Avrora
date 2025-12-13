@@ -2,6 +2,8 @@ package usecase
 
 import (
 	"context"
+	"time"
+
 	"go.uber.org/zap"
 
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/domain"
@@ -18,6 +20,14 @@ type IOfferRepository interface {
 	GetByID(ctx context.Context, id string) (*domain.Offer, error)
 	FilterOffers(ctx context.Context, f *domain.OfferFilter, limit, offset int) ([]domain.OfferInFeed, error)
 	GetOfferPriceHistory(ctx context.Context, id string) ([]domain.PricePoint, error)
+	LogView(ctx context.Context, offerID string) error
+	ToggleLike(ctx context.Context, offerID, userID string) error
+	GetOfferViewCount(ctx context.Context, id string) (int, error)
+	GetOfferLikeCount(ctx context.Context, id string) (int, error)
+	IsOfferLiked(ctx context.Context, offerID, userID string) (bool, error)
+	ListPaidOffers(ctx context.Context, page, limit int) (*domain.OffersInFeed, error)
+	InsertPaidAdvertisement(ctx context.Context, offerID string, expiresAt time.Time) error
+	ListLikedOffersByUserID(ctx context.Context, userID string, page, limit int) (*domain.OffersInFeed, error)
 }
 
 type offerUsecase struct {
