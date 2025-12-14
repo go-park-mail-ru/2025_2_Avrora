@@ -151,7 +151,8 @@ func main() {
 	mux.HandleFunc("/api/v1/complexes/update/", authMW(complexHandler.UpdateComplex))
 	mux.HandleFunc("/api/v1/complexes/delete/", authMW(complexHandler.DeleteComplex))
 
-	// Webhook for payments
+	// Payments
+	mux.HandleFunc("/api/v1/offers/getpaymentlink/", offerHandler.GetPaymentLink)
 	mux.HandleFunc("/api/v1/offers/webhook", offerHandler.WebHook)
 
 	// Middleware setup
