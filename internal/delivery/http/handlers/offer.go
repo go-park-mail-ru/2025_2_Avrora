@@ -1,9 +1,11 @@
 package handlers
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"strings"
@@ -14,6 +16,7 @@ import (
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/delivery/http/utils"
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/domain"
 	"github.com/go-park-mail-ru/2025_2_Avrora/internal/usecase"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
@@ -404,4 +407,82 @@ func getClientIP(r *http.Request) string {
 	}
 	host, _, _ := net.SplitHostPort(r.RemoteAddr)
 	return host
+}
+
+func (o *offerHandler) GetPaymentLink(w http.ResponseWriter, r *http.Request) {
+	offerID := GetPathParameter(r, "/api/v1/offers/getpaymentlink/")
+	if offerID == "" {
+		o.logger.Error(r.Context(), "invalid or no offerID for payment link")
+		response.HandleError(w, nil, http.StatusBadRequest, "нет offerID")
+		return
+	}
+
+	body := PaymentRequest{
+		Amount: Amount{
+			Value:    "2.00",
+			Currency: "RUB",
+		},
+		PaymentMethodData: PaymentMethodData{
+			Type: "bank_card",
+		},
+		Confirmation: Confirmation{
+			Type:      "redirect",
+			ReturnURL: "https://homa-land.ru",
+		},
+		Metadata: Metadata{
+			OfferID: offerID,
+		},
+	}
+
+	jsonBody, err := json.Marshal(body)
+	if err != nil {
+		o.logger.Error(r.Context(), fmt.Sprintf("failed to marshal JSON: %v", err))
+		response.HandleError(w, nil, http.StatusInternalServerError, "ошибка при создании запроса")
+		return
+	}
+
+	client := &http.Client{}
+	req, err := http.NewRequest("POST", "https://api.yookassa.ru/v3/payments", bytes.NewBuffer(jsonBody))
+	if err != nil {
+		o.logger.Error(r.Context(), fmt.Sprintf("failed to create HTTP request: %v", err))
+		response.HandleError(w, nil, http.StatusInternalServerError, "ошибка при создании запроса")
+		return
+	}
+
+	idempotenceKey := uuid.New().String()
+	req.SetBasicAuth("1223051", "test_-GnHiyTV214hmFlfY1ZiPAbymVGPaezFYFDZ-LLNs6o")
+	req.Header.Set("Idempotence-Key", idempotenceKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		o.logger.Error(r.Context(), fmt.Sprintf("failed to send HTTP request: %v", err))
+		response.HandleError(w, nil, http.StatusBadGateway, "ошибка при отправке запроса")
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		o.logger.Error(r.Context(), fmt.Sprintf("non-200 response from YooKassa: %d", resp.StatusCode))
+		response.HandleError(w, nil, resp.StatusCode, "ошибка от платежного шлюза")
+		return
+	}
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		o.logger.Error(r.Context(), fmt.Sprintf("failed to read response body: %v", err))
+		response.HandleError(w, nil, http.StatusInternalServerError, "ошибка при чтении ответа")
+		return
+	}
+
+	var paymentResp PaymentResponse
+	err = json.Unmarshal(respBody, &paymentResp)
+	if err != nil {
+		o.logger.Error(r.Context(), fmt.Sprintf("failed to unmarshal response JSON: %v", err))
+		response.HandleError(w, nil, http.StatusInternalServerError, "ошибка при обработке ответа")
+		return
+	}
+
+	confirmationURL := strings.TrimSpace(paymentResp.Confirmation.ConfirmationURL) // Trim spaces
+	response.WriteJSON(w, http.StatusOK, confirmationURL)
 }
