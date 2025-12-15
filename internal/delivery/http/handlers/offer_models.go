@@ -163,3 +163,34 @@ type Recipient struct {
 	AccountID string `json:"account_id"`
 	GatewayID string `json:"gateway_id"`
 }
+
+type Amount struct {
+	Value    string `json:"value"`
+	Currency string `json:"currency"`
+}
+
+type PaymentMethodData struct {
+	Type string `json:"type"`
+}
+
+type Confirmation struct {
+	Type       string `json:"type"`
+	ReturnURL  string `json:"return_url"`
+}
+
+type Metadata struct {
+	OfferID string `json:"offer_id"`
+}
+
+type PaymentRequest struct {
+	Amount              Amount           `json:"amount"`
+	PaymentMethodData   PaymentMethodData `json:"payment_method_data"`
+	Confirmation        Confirmation      `json:"confirmation"`
+	Metadata            Metadata          `json:"metadata"`
+}
+
+type PaymentResponse struct {
+	Confirmation struct {
+		ConfirmationURL string `json:"confirmation_url"`
+	} `json:"confirmation"`
+}
