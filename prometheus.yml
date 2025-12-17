@@ -1,0 +1,16 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  - job_name: 'avrora-app'
+    static_configs:
+      - targets: ['avrora-app:8081']
+
+  - job_name: 'auth-service'
+    static_configs:
+      - targets: ['auth-service:8082']
+
+  - job_name: 'fileserver-service'
+    static_configs:
+      - targets: ['fileserver-service:8083']

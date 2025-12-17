@@ -1,10 +1,12 @@
 package domain
 
+//go:generate easyjson -all $GOFILE
 import (
 	"errors"
 	"time"
 )
 
+//easyjson:json
 type Profile struct {
 	ID        string
 	UserID    string
@@ -18,6 +20,7 @@ type Profile struct {
 	UpdatedAt time.Time
 }
 
+//easyjson:json
 type ProfileUpdate struct {
 	ID        string
 	FirstName string
@@ -27,6 +30,7 @@ type ProfileUpdate struct {
 	AvatarURL string
 }
 
+//easyjson:json
 type ProfileSecurityUpdate struct {
 	OldPassword string
 	NewPassword string

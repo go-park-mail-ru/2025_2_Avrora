@@ -27,13 +27,17 @@ psql -u postgres -h localhost
 create database "2025_2_Avrora";
 ```
 
-### Linter
+### Docker
 
-Если не видит команду golangci-lint
+Если запускаете через докер то
+DB_HOST=db вместо localhost
 
+Run
 ```bash
-go mod tidy
-export GOROOT=/usr/local/go
-export GOPATH=$HOME/go
-export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
+docker-compose up --build
+```
+
+Stop
+```bash
+docker-compose down -v
 ```

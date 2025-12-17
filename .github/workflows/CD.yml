@@ -1,0 +1,67 @@
+name: CD
+
+on:
+  push:
+    branches:
+      - main
+      - docker
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: Build and push auth-service
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Dockerfile
+          target: auth-service
+          push: true
+          tags: stepone1337/avrora-auth-service:latest
+
+      - name: Build and push fileserver-service
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Dockerfile
+          target: fileserver-service
+          push: true
+          tags: stepone1337/avrora-fileserver-service:latest
+
+      - name: Build and push avrora-app
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Dockerfile
+          target: avrora-app
+          push: true
+          tags: stepone1337/avrora-avrora-app:latest
+
+  deploy-to-vm:
+    needs: build-and-push
+    runs-on: ubuntu-20.04
+
+    steps:
+      - name: Deploy to VM
+        uses: appleboy/ssh-action@master
+        with:
+          host: 37.139.40.252
+          username: ubuntu
+          key: ${{ secrets.VM_SSH_KEY }}
+          script: |
+            cd /home/ubuntu/avrora/back/2025_2_Avrora
+            docker-compose down -v
+            docker system prune -af
+            git pull origin docker # TODO change to main
+            docker-compose pull
+            docker-compose up -d
