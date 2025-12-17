@@ -89,26 +89,26 @@ type UpdateOfferRequest struct {
 
 // WebhookRequest represents the root structure of the incoming webhook payload.
 type WebhookRequest struct {
-	Event string      `json:"event"`
-	Type  string      `json:"type"`
-	Object Payment    `json:"object"`
+	Event  string  `json:"event"`
+	Type   string  `json:"type"`
+	Object Payment `json:"object"`
 }
 
 // Payment represents the payment details in the webhook payload.
 type Payment struct {
-	Amount             AmountDetails       `json:"amount"`
+	Amount               AmountDetails        `json:"amount"`
 	AuthorizationDetails AuthorizationDetails `json:"authorization_details"`
-	CreatedAt          string              `json:"created_at"`
-	Description        string              `json:"description"`
-	ExpiresAt          string              `json:"expires_at"`
-	ID                 string              `json:"id"`
-	Metadata           map[string]string   `json:"metadata"`
-	Paid               bool                `json:"paid"`
-	PaymentMethod      PaymentMethod       `json:"payment_method"`
-	Recipient          Recipient           `json:"recipient"`
-	Refundable         bool                `json:"refundable"`
-	Status             string              `json:"status"`
-	Test               bool                `json:"test"`
+	CreatedAt            string               `json:"created_at"`
+	Description          string               `json:"description"`
+	ExpiresAt            string               `json:"expires_at"`
+	ID                   string               `json:"id"`
+	Metadata             map[string]string    `json:"metadata"`
+	Paid                 bool                 `json:"paid"`
+	PaymentMethod        PaymentMethod        `json:"payment_method"`
+	Recipient            Recipient            `json:"recipient"`
+	Refundable           bool                 `json:"refundable"`
+	Status               string               `json:"status"`
+	Test                 bool                 `json:"test"`
 }
 
 // AmountDetails represents the amount details in the payment.
@@ -119,17 +119,17 @@ type AmountDetails struct {
 
 // AuthorizationDetails represents the authorization details in the payment.
 type AuthorizationDetails struct {
-	AuthCode      string            `json:"auth_code"`
-	RRN           string            `json:"rrn"`
+	AuthCode     string              `json:"auth_code"`
+	RRN          string              `json:"rrn"`
 	ThreeDSecure ThreeDSecureDetails `json:"three_d_secure"`
 }
 
 // ThreeDSecureDetails represents the 3D Secure details.
 type ThreeDSecureDetails struct {
-	Applied           bool   `json:"applied"`
+	Applied            bool   `json:"applied"`
 	ChallengeCompleted bool   `json:"challenge_completed"`
-	MethodCompleted   bool   `json:"method_completed"`
-	Protocol          string `json:"protocol"`
+	MethodCompleted    bool   `json:"method_completed"`
+	Protocol           string `json:"protocol"`
 }
 
 // PaymentMethod represents the payment method details.
@@ -145,12 +145,12 @@ type PaymentMethod struct {
 // CardDetails represents the card details in the payment method.
 type CardDetails struct {
 	CardProduct   CardProductDetails `json:"card_product"`
-	CardType      string            `json:"card_type"`
-	ExpiryMonth   string            `json:"expiry_month"`
-	ExpiryYear    string            `json:"expiry_year"`
-	First6        string            `json:"first6"`
-	IssuerCountry string            `json:"issuer_country"`
-	Last4         string            `json:"last4"`
+	CardType      string             `json:"card_type"`
+	ExpiryMonth   string             `json:"expiry_month"`
+	ExpiryYear    string             `json:"expiry_year"`
+	First6        string             `json:"first6"`
+	IssuerCountry string             `json:"issuer_country"`
+	Last4         string             `json:"last4"`
 }
 
 // CardProductDetails represents the card product details.
@@ -174,8 +174,8 @@ type PaymentMethodData struct {
 }
 
 type Confirmation struct {
-	Type       string `json:"type"`
-	ReturnURL  string `json:"return_url"`
+	Type      string `json:"type"`
+	ReturnURL string `json:"return_url"`
 }
 
 type Metadata struct {
@@ -183,10 +183,10 @@ type Metadata struct {
 }
 
 type PaymentRequest struct {
-	Amount              Amount           `json:"amount"`
-	PaymentMethodData   PaymentMethodData `json:"payment_method_data"`
-	Confirmation        Confirmation      `json:"confirmation"`
-	Metadata            Metadata          `json:"metadata"`
+	Amount            Amount            `json:"amount"`
+	PaymentMethodData PaymentMethodData `json:"payment_method_data"`
+	Confirmation      Confirmation      `json:"confirmation"`
+	Metadata          Metadata          `json:"metadata"`
 }
 
 type PaymentResponse struct {
