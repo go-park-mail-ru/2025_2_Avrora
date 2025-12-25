@@ -85,13 +85,13 @@ func main() {
 	}
 
 	// GRPC Clients
-	authClient, err := service.NewAuthClient("auth-service:50051", grpcLogger)
+	authClient, err := service.NewAuthClient(":50051", grpcLogger)
 	if err != nil {
 		log.Fatal("failed to create auth client", zap.Error(err))
 	}
 
 	// Create raw gRPC connection for fileserver
-	fileServerConn, err := grpc.NewClient("fileserver-service:50052", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	fileServerConn, err := grpc.NewClient(":50052", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatal("failed to create file server connection", zap.Error(err))
 	}

@@ -1,0 +1,10 @@
+Requests      [total, rate, throughput]  2000, 100.05, 25.21
+Duration      [total, attack, wait]      49.97056s, 19.99003325s, 29.98052675s
+Latencies     [mean, 50, 95, 99, max]    24.589476341s, 29.750585456s, 30.001251994s, 30.0014765s, 30.003596666s
+Bytes In      [total, mean]              4495338, 2247.67
+Bytes Out     [total, mean]              0, 0.00
+Success       [ratio]                    63.00%
+Status Codes  [code:count]               0:740  200:1260  
+Error Set:
+Get "http://localhost:8080/api/v1/offers": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+Get "http://localhost:8080/api/v1/offers?offer_type=sale": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
