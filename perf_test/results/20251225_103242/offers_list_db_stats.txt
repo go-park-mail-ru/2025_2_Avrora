@@ -1,0 +1,22 @@
+ calls | avg_ms | max_ms | total_ms  | percent |                                           query_preview                                           
+-------+--------+--------+-----------+---------+---------------------------------------------------------------------------------------------------
+   186 | 613.10 | 885.75 | 114036.42 |   21.03 | SELECT                                                                                           +
+       |        |        |           |         |                         o.id, o.user_id, o.offer_type, o.property_type, o.price, o.area, o.rooms,+
+       |        |        |           |         |                         o.floor, o.t
+   186 | 610.24 | 892.28 | 113503.82 |   20.93 | SELECT                                                                                           +
+       |        |        |           |         |                         o.id,                                                                    +
+       |        |        |           |         |                         o.user_id,                                                               +
+       |        |        |           |         |                         o.offer_type,                                                            +
+       |        |        |           |         |                         o.property_type,                                                         +
+       |        |        |           |         |                         o.price,                                                                 +
+       |        |        |           |         |                         o.area,                                                                  +
+       |        |        |           |         |                         o.room
+   371 | 573.64 | 858.83 | 212820.21 |   39.25 | SELECT                                                                                           +
+       |        |        |           |         |                         o.id, o.user_id, o.offer_type, o.property_type, o.price, o.area, o.rooms,+
+       |        |        |           |         |                         o.floor, o.t
+   186 | 545.89 | 862.33 | 101536.14 |   18.73 | SELECT                                                                                           +
+       |        |        |           |         |                         o.id, o.user_id, o.offer_type, o.property_type, o.price, o.area, o.rooms,+
+       |        |        |           |         |                         o.floor, o.t
+    34 |   9.44 |  14.01 |    321.09 |    0.06 | SELECT COUNT(*) FROM offer WHERE status = $1
+(5 rows)
+

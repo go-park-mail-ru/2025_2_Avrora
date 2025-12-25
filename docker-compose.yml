@@ -2,22 +2,22 @@ services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: 2025_2_Avrora
     volumes:
       - pg:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
 
   migrate:
     build: { context: ., target: migrate }
-    command: ["/go/bin/migrate", "-database", "postgres://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}?sslmode=disable", "-path", "/app/migrations", "up"]
+    command: ["/go/bin/migrate", "-database", "postgres://postgres:postgres@localhost:5432/2025_2_Avrora?sslmode=disable", "-path", "/app/migrations", "up"]
     depends_on:
       db:
         condition: service_healthy

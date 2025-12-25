@@ -1,0 +1,28 @@
+ calls | avg_ms  | max_ms  | total_ms  | percent |                                           query_preview                                           
+-------+---------+---------+-----------+---------+---------------------------------------------------------------------------------------------------
+   221 | 1189.94 | 1939.35 | 262977.60 |   49.93 | SELECT                                                                                           +
+       |         |         |           |         |                         o.id, o.user_id, o.offer_type, o.property_type, o.price, o.area, o.rooms,+
+       |         |         |           |         |                         o.floor, o.t
+   222 | 1184.34 | 1918.32 | 262922.96 |   49.92 | SELECT                                                                                           +
+       |         |         |           |         |                         o.id,                                                                    +
+       |         |         |           |         |                         o.user_id,                                                               +
+       |         |         |           |         |                         o.offer_type,                                                            +
+       |         |         |           |         |                         o.property_type,                                                         +
+       |         |         |           |         |                         o.price,                                                                 +
+       |         |         |           |         |                         o.area,                                                                  +
+       |         |         |           |         |                         o.room
+    39 |   10.75 |   15.44 |    419.38 |    0.08 | SELECT COUNT(*) FROM offer WHERE status = $1
+   500 |    0.61 |    3.86 |    306.19 |    0.06 | WITH total AS (SELECT COUNT(*) AS total_count FROM housing_complex)                              +
+       |         |         |           |         |                 SELECT                                                                           +
+       |         |         |           |         |                         hc.id,                                                                   +
+       |         |         |           |         |                         hc.name,                                                                 +
+       |         |         |           |         |         
+   500 |    0.05 |    0.98 |     24.34 |    0.00 | SELECT                                                                                           +
+       |         |         |           |         |                         p.id,                                                                    +
+       |         |         |           |         |                         u.id AS user_id,                                                         +
+       |         |         |           |         |                         p.first_name,                                                            +
+       |         |         |           |         |                         p.last_name,                                                             +
+       |         |         |           |         |                         p.phone,                                                                 +
+       |         |         |           |         |                         p.ava
+(5 rows)
+

@@ -1,0 +1,16 @@
+ calls | avg_ms | max_ms | total_ms | percent |              query_preview               
+-------+--------+--------+----------+---------+------------------------------------------
+  2000 |   6.55 |  17.84 | 13091.40 |   52.17 | SELECT offer_id, url                    +
+       |        |        |          |         |                 FROM offer_photo        +
+       |        |        |          |         |                 WHERE offer_id = ANY($1)+
+       |        |        |          |         |                 ORDER BY created_at ASC
+  2000 |   6.00 |  17.13 | 12000.35 |   47.83 | SELECT                                  +
+       |        |        |          |         |                 o.id,                   +
+       |        |        |          |         |                 o.user_id,              +
+       |        |        |          |         |                 o.location_id,          +
+       |        |        |          |         |                 o.housing_complex_id,   +
+       |        |        |          |         |                 o.title,                +
+       |        |        |          |         |                 o.description,          +
+       |        |        |          |         |                 o
+(2 rows)
+
